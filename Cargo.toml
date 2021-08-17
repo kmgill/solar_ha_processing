@@ -1,0 +1,31 @@
+[package]
+name = "solar_ha_processing"
+version = "0.1.0"
+authors = ["Kevin M. Gill <kmsmgill@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[lib]
+name = "solar_ha_processing"
+
+# [[bin]]
+# name = "msl_mahli_calibrate"
+# path = "bin/msl_mahli_calibrate.rs"
+
+
+[dependencies]
+image = "0.23.14"
+clap = "2.33.3"
+serde_json = "1.0.64"
+const_format = "0.2.14"
+platforms = "1.1.0"
+toml = "0.5.8"
+serde = { version = "1.0.125", features = ["derive"] }
+sscanf = "0.1.1"
+string-builder = "0.2.0"
+memmap = "0.7.0"
+
+
+
