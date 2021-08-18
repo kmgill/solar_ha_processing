@@ -100,65 +100,19 @@ fn read_string(map:&Mmap, start:usize, len:usize) -> String {
     String::from_utf8(v).expect("Failed reading string value")
 }
 
-fn bytes_to_f64(bytes:[u8; 8], endian:Endian) -> f64 {
-    match endian {
-        Endian::BigEndian => f64::from_be_bytes(bytes),
-        Endian::LittleEndian => f64::from_le_bytes(bytes),
-        Endian::NativeEndian => f64::from_ne_bytes(bytes)
-    }
-}
-
-fn bytes_to_u64(bytes:[u8; 8], endian:Endian) -> u64 {
-    match endian {
-        Endian::BigEndian => u64::from_be_bytes(bytes),
-        Endian::LittleEndian => u64::from_le_bytes(bytes),
-        Endian::NativeEndian => u64::from_ne_bytes(bytes)
-    }
-}
-
-fn bytes_to_i64(bytes:[u8; 8], endian:Endian) -> i64 {
-    match endian {
-        Endian::BigEndian => i64::from_be_bytes(bytes),
-        Endian::LittleEndian => i64::from_le_bytes(bytes),
-        Endian::NativeEndian => i64::from_ne_bytes(bytes)
-    }
-}
-
-fn bytes_to_u32(bytes:[u8; 4], endian:Endian) -> u32 {
-    match endian {
-        Endian::BigEndian => u32::from_be_bytes(bytes),
-        Endian::LittleEndian => u32::from_le_bytes(bytes),
-        Endian::NativeEndian => u32::from_ne_bytes(bytes)
-    }
-}
-
-fn bytes_to_i32(bytes:[u8; 4], endian:Endian) -> i32 {
-    match endian {
-        Endian::BigEndian => i32::from_be_bytes(bytes),
-        Endian::LittleEndian => i32::from_le_bytes(bytes),
-        Endian::NativeEndian => i32::from_ne_bytes(bytes)
-    }
-}
-
-fn bytes_to_u16(bytes:[u8; 2], endian:Endian) -> u16 {
-    match endian {
-        Endian::BigEndian => u16::from_be_bytes(bytes),
-        Endian::LittleEndian => u16::from_le_bytes(bytes),
-        Endian::NativeEndian => u16::from_ne_bytes(bytes)
-    }
-}
-
-fn bytes_to_i16(bytes:[u8; 2], endian:Endian) -> i16 {
-    match endian {
-        Endian::BigEndian => i16::from_be_bytes(bytes),
-        Endian::LittleEndian => i16::from_le_bytes(bytes),
-        Endian::NativeEndian => i16::from_ne_bytes(bytes)
-    }
+macro_rules! bytes_to_primitive {
+    ($bytes:ident, $type:ident, $endian:expr) => {
+        match $endian {
+            Endian::BigEndian => $type::from_be_bytes($bytes),
+            Endian::LittleEndian => $type::from_le_bytes($bytes),
+            Endian::NativeEndian => $type::from_ne_bytes($bytes)
+        }
+    };
 }
 
 fn read_i32(map:&Mmap, start:usize) -> i32 {
     let v: [u8; 4] = map[start..(start + 4)].try_into().expect("slice with incorrect length");
-    bytes_to_i32(v, Endian::NativeEndian)
+    bytes_to_primitive!(v, i32, Endian::NativeEndian)
 }
 
 impl SerFrame {
@@ -271,7 +225,7 @@ impl SerFile {
         let timestamp_bytes : [u8; 8] = self.map[timestamp_start_index..(timestamp_start_index+TIMESTAMP_SIZE_BYTES)].try_into().expect("slice with incorrect length");
 
         Ok(
-            bytes_to_u64(timestamp_bytes, Endian::NativeEndian) as f64
+            bytes_to_primitive!(timestamp_bytes, u64, Endian::NativeEndian) as f64
         )
     }
 
@@ -303,7 +257,7 @@ impl SerFile {
                     pixel_value = pixel_bytes as f32;
                 } else if self.pixel_depth == 16 {
                     let pixel_bytes : [u8; 2] = bytes[pixel_start..(pixel_start+1)].try_into().expect("slice with incorrect length");
-                    pixel_value = bytes_to_u16(pixel_bytes, self.endian) as f32;
+                    pixel_value = bytes_to_primitive!(pixel_bytes, u16, self.endian) as f32;
                 } else {
                     panic!("Encountered unsupported pixel depth: {}", self.pixel_depth);
                 }
