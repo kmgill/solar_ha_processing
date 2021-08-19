@@ -23,7 +23,7 @@ fn test_load_ser() {
     assert_eq!(ser_file.file_id, "LUCAM-RECORDER");
     assert_eq!(ser_file.camera_series_id, 0);
     assert_eq!(ser_file.color_id, ser::ColorFormatId::Mono);
-    assert_eq!(ser_file.endian, ser::Endian::BigEndian);
+    assert_eq!(ser_file.endian, ser::Endian::LittleEndian);
     assert_eq!(ser_file.image_width, 1936);
     assert_eq!(ser_file.image_height, 1216);
     assert_eq!(ser_file.pixel_depth, 8);

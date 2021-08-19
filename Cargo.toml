@@ -10,10 +10,13 @@ edition = "2018"
 [lib]
 name = "solar_ha_processing"
 
-# [[bin]]
-# name = "msl_mahli_calibrate"
-# path = "bin/msl_mahli_calibrate.rs"
+[[bin]]
+name = "ser_info"
+path = "bin/ser_info.rs"
 
+[[bin]]
+name = "ser_extract_frame"
+path = "bin/ser_extract_frame.rs"
 
 [dependencies]
 image = "0.23.14"

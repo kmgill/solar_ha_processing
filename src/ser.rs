@@ -1,18 +1,15 @@
 
 use crate::{
     imagebuffer,
-    constants,
     error,
     vprintln,
-    print,
-    not_implemented
+    print
 };
 
 use std::convert::TryInto;
 
 use memmap::Mmap;
 use std::fs::File;
-
 
 const HEADER_SIZE_BYTES : usize = 178;
 const TIMESTAMP_SIZE_BYTES : usize = 8;
@@ -43,7 +40,6 @@ impl ColorFormatId {
             18 => ColorFormatId::BayerYmcy,
             19 => ColorFormatId::BayerMyyc,
             _ => panic!(format!("Invalid color format enum value: {}", v))
-
         }
     }
 }
@@ -51,16 +47,16 @@ impl ColorFormatId {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Endian {
-    BigEndian = 0,
-    LittleEndian = 1,
+    BigEndian = 1,
+    LittleEndian = 0,
     NativeEndian = 100
 }
 
 impl Endian {
     pub fn from_i32(v:i32) -> Endian {
         match v {
-            0 => Endian::BigEndian,
-            1 => Endian::LittleEndian,
+            1 => Endian::BigEndian,
+            0 => Endian::LittleEndian,
             _ => panic!("Invalid endian enum value")
         }
     }
@@ -249,14 +245,14 @@ impl SerFile {
         for y in 0..self.image_height {
             for x in 0..self.image_width {
                 
-                let pixel_start = x + (y * self.image_width) * bytes_per_pixel;
+                let pixel_start = (x + (y * self.image_width)) * bytes_per_pixel;
                 let pixel_value:f32;
 
                 if self.pixel_depth == 8 {
                     let pixel_bytes : u8 = bytes[pixel_start];
                     pixel_value = pixel_bytes as f32;
                 } else if self.pixel_depth == 16 {
-                    let pixel_bytes : [u8; 2] = bytes[pixel_start..(pixel_start+1)].try_into().expect("slice with incorrect length");
+                    let pixel_bytes : [u8; 2] = bytes[pixel_start..(pixel_start+2)].try_into().expect("slice with incorrect length");
                     pixel_value = bytes_to_primitive!(pixel_bytes, u16, self.endian) as f32;
                 } else {
                     panic!("Encountered unsupported pixel depth: {}", self.pixel_depth);
