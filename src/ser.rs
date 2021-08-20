@@ -52,6 +52,8 @@ impl ColorFormatId {
             17 => ColorFormatId::BayerYcmy,
             18 => ColorFormatId::BayerYmcy,
             19 => ColorFormatId::BayerMyyc,
+            100 => ColorFormatId::Rgb,
+            101 => ColorFormatId::Bgr,
             _ => panic!(format!("Invalid color format enum value: {}", v))
         }
     }
