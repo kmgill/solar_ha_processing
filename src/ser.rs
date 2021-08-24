@@ -5,7 +5,8 @@ use crate::{
     imagebuffer,
     error,
     vprintln,
-    print
+    print,
+    enums
 };
 
 use std::convert::TryInto;
@@ -224,6 +225,8 @@ impl SerFrame {
     }
 }
 
+// Full implementation of the SER specification is sorta impractical at this time
+// since I lack both the requisite test data and the motivation to actually do it. 
 impl SerFile {
 
     pub fn print_header_details(&self) {
@@ -370,7 +373,14 @@ impl SerFile {
         
         Ok(
             SerFrame::new(
-                imagebuffer::ImageBuffer::from_vec(values, self.image_width, self.image_height).expect("Failed to allocate image buffer"),
+                imagebuffer::ImageBuffer::from_vec_as_mode(values, 
+                    self.image_width, 
+                    self.image_height,
+                    match self.pixel_depth {
+                        8 => enums::ImageMode::U8BIT,
+                        _ => enums::ImageMode::U16BIT
+                    }
+                ).expect("Failed to allocate image buffer"),
                 self.get_frame_timestamp(frame_num).expect("Failed to extract frame timestamp")
             )
         )

@@ -2,15 +2,19 @@ use solar_ha_processing::{
     ser,
     constants,
     print,
-    path
+    path,
+    vprintln,
+    mean
 };
 
 #[macro_use]
 extern crate clap;
 
 use clap::{Arg, App};
-
 use std::process;
+
+
+
 
 fn main() {
     let matches = App::new(crate_name!())
@@ -23,13 +27,6 @@ fn main() {
                         .help("Input")
                         .required(true)
                         .takes_value(true))
-                    .arg(Arg::with_name("frame")
-                        .short("f")
-                        .long("frame")
-                        .value_name("frame")
-                        .help("Frame number (beginning at 1)")
-                        .required(true)
-                        .takes_value(true))  
                     .arg(Arg::with_name(constants::param::PARAM_OUTPUT)
                         .short(constants::param::PARAM_OUTPUT_SHORT)
                         .long(constants::param::PARAM_OUTPUT)
@@ -61,31 +58,24 @@ fn main() {
         process::exit(2);
     }
 
-    let mut frame_num : usize = 0;
-    if matches.is_present("frame") {
-        let s = matches.value_of("frame").unwrap();
-        if solar_ha_processing::is_valid_number!(s, usize) {
-            frame_num = s.parse::<usize>().unwrap() - 1; // Subtract one to convert to zero indexing
-        } else {
-            eprintln!("Error: Invalid number specified");
-            process::exit(1);
-        }
-    }
 
-    let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
-    ser_file.validate();
+    let input_files: Vec<&str> = matches.values_of(constants::param::PARAM_INPUTS).unwrap().collect();
 
-    if frame_num >= ser_file.frame_count {
-        eprintln!("Error: Requested frame {} exceeds available frames {}", (frame_num + 1), ser_file.frame_count);
-        process::exit(5);
-    }
+    let mean_stack = mean::compute_mean(&input_files, true).expect("Failed to calculate mean");
 
-    let frame = ser_file.get_frame(frame_num).expect("Failed extracting frame");
+    vprintln!("Saving stack buffer to {}", output_file_path);
+    mean_stack.save(output_file_path).expect("Failed to save output frame image");
+    // match ser_file.pixel_depth {
+    //     8 => {
+    //         frame.buffer.save_8bit(output_file_path).expect("Failed to save output frame image");
+    //     },
+    //     16 => {
+    //         frame.buffer.save_16bit(output_file_path).expect("Failed to save output frame image");
+    //     },
+    //     _ => {
+    //         eprintln!("Error: Unsupported pixel depth encountered");
+    //         process::exit(4);
+    //     }
+    // };
 
-    if ! path::parent_exists_and_writable(output_file_path) {
-        eprintln!("Error: Output file path cannot be found or is unwritable");
-        process::exit(3);
-    }
-
-    frame.buffer.save_8bit(output_file_path).expect("Failed to save output frame image");
 }

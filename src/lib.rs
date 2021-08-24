@@ -14,3 +14,4 @@ pub mod stats;
 pub mod ser;
 pub mod enums;
 pub mod util;
+pub mod mean;
