@@ -26,6 +26,10 @@ path = "bin/ser_extract.rs"
 name = "ser_mean"
 path = "bin/ser_mean.rs"
 
+[[bin]]
+name = "process_ha"
+path = "bin/process_ha.rs"
+
 [dependencies]
 image = "0.23.14"
 clap = "2.33.3"

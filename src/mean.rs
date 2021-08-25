@@ -36,9 +36,9 @@ pub fn compute_mean(ser_files:&Vec<&str>, _skip_glitch_frames:bool) -> error::Re
 
         for i in 0..ser_file.frame_count {
             // TODO: Remove
-            if i >= 10 {
-                break;
-            }
+            // if i >= 10 {
+            //     break;
+            // }
 
             let frame = ser_file.get_frame(i).expect("Failed to load image frame");
             let framemm = frame.buffer.get_min_max().unwrap();

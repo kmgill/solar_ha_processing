@@ -1,3 +1,5 @@
+// A simple frame extraction tool. Does no preprocessing. 
+
 use solar_ha_processing::{
     ser,
     constants,

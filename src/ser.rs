@@ -55,7 +55,7 @@ impl ColorFormatId {
             19 => ColorFormatId::BayerMyyc,
             100 => ColorFormatId::Rgb,
             101 => ColorFormatId::Bgr,
-            _ => panic!(format!("Invalid color format enum value: {}", v))
+            _ => panic!("Invalid color format enum value: {}", v)
         }
     }
 }
@@ -343,7 +343,7 @@ impl SerFile {
         let image_frame_size_bytes = self.image_frame_size_bytes();
         let image_frame_start_index = self.image_frame_start_index(frame_num);
 
-        vprintln!("Extracting image frame #{} of size {} at byte index {}", frame_num, image_frame_size_bytes, image_frame_start_index);
+        vprintln!("Extracting image frame #{} of {}. Size {} at byte index {}", frame_num, self.frame_count, image_frame_size_bytes, image_frame_start_index);
 
         let bytes:Vec<u8> = self.map[image_frame_start_index..(image_frame_start_index + image_frame_size_bytes)].iter().map(|x| x.clone()).collect();
 

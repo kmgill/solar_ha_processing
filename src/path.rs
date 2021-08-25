@@ -1,9 +1,22 @@
 
 use std::path::Path;
+use std::ffi::OsStr;
+
+pub fn get_extension(chk_path:&str) -> Option<&str> {
+    Path::new(chk_path).extension().and_then(OsStr::to_str)
+}
 
 // Checks if file exists.
 pub fn file_exists(chk_path:&str) -> bool {
     Path::new(&chk_path).exists()
+}
+
+pub fn is_dir(chk_path:&str) -> bool {
+    Path::new(&chk_path).is_dir()
+}
+
+pub fn is_file(chk_path:&str) -> bool {
+    Path::new(&chk_path).is_file()
 }
 
 pub fn basename(chk_path:&str) -> String {
@@ -13,6 +26,10 @@ pub fn basename(chk_path:&str) -> String {
 pub fn file_writable(chk_path:&str) -> bool {
     let path = Path::new(&chk_path);
     !path.metadata().unwrap().permissions().readonly()
+}
+
+pub fn path_exists_and_writable(chk_path:&str) -> bool {
+    file_exists(chk_path) && file_writable(chk_path)
 }
 
 pub fn get_parent(chk_path:&str) -> String {
