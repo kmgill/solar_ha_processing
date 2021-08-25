@@ -123,7 +123,7 @@ pub fn debayer(buffer:&ImageBuffer) -> error::Result<RgbImage> {
         }
     }
 
-    let newimage = RgbImage::new_from_buffers_rgb(&red, &green, &blue, enums::Instrument::None, enums::ImageMode::U8BIT).unwrap();
+    let newimage = RgbImage::new_from_buffers_rgb(&red, &green, &blue, enums::ImageMode::U8BIT).unwrap();
     Ok(newimage)
 }
 

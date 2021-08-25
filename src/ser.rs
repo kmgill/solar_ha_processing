@@ -6,7 +6,8 @@ use crate::{
     error,
     vprintln,
     print,
-    enums
+    enums,
+    timestamp
 };
 
 use std::convert::TryInto;
@@ -17,14 +18,6 @@ use std::fs::File;
 const HEADER_SIZE_BYTES : usize = 178;
 const TIMESTAMP_SIZE_BYTES : usize = 8;
 
-const SEPTASECONDS_PER_SECOND : u64 = 10000000;
-const SEPTASECONDS_PER_MICROSECOND : u64 = 10;
-//const SEPTASECONDS_PER_PART_MINUTE : u64 = SEPTASECONDS_PER_DAY * 6;
-const SEPTASECONDS_PER_MINUTE : u64 = SEPTASECONDS_PER_SECOND * 60;
-const SEPTASECONDS_PER_HOUR : u64 = SEPTASECONDS_PER_SECOND * 60 * 60;
-const SEPTASECONDS_PER_DAY : u64 = SEPTASECONDS_PER_HOUR * 24;
-const DAYS_PER_400_YEARS : u64 = 303 * 365 + 97 * 366;
-//const SEPTASECONDS_PER_400_YEARS : u64 = DAYS_PER_400_YEARS * SEPTASECONDS_PER_DAY;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ColorFormatId {
@@ -79,94 +72,13 @@ impl Endian {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct TimeStamp {
-    pub timestamp:u64,
-    pub year: i32,
-    pub month: i32,
-    pub day: i32,
-    pub hour: i32,
-    pub minute: i32,
-    pub second: i32,
-    pub microsecond: i32
-}
-
-
-impl TimeStamp {
-
-    fn is_leap_year(year:u64) -> bool {
-        (year % 400 == 0 || year % 4 == 0) && year % 100 != 0
-    }
-
-    // This code is adapter from ser_viewer/pipp_timestmp.cpp, (c) 2015 by Chris Garry
-    pub fn from_u64(ts_u64:u64) -> TimeStamp {
-
-        let ts = ts_u64 % SEPTASECONDS_PER_DAY;
-
-        let hours = ts / SEPTASECONDS_PER_HOUR;
-        let minutes = (ts % SEPTASECONDS_PER_HOUR) / SEPTASECONDS_PER_MINUTE;
-        let seconds = (ts % SEPTASECONDS_PER_MINUTE) / SEPTASECONDS_PER_SECOND;
-        let microseconds = (ts % SEPTASECONDS_PER_SECOND) / SEPTASECONDS_PER_MICROSECOND;
-        let mut days_ts = ts_u64 / SEPTASECONDS_PER_DAY;
-        let mut year = 0;
-
-        for y in (1..9999).step_by(400)  {
-            year = y;
-            if days_ts >= DAYS_PER_400_YEARS {
-                days_ts -= DAYS_PER_400_YEARS;
-            } else {
-                break;
-            }
-        }
-
-        for y in year..9999 {
-            year = y;
-            let days_this_year = if TimeStamp::is_leap_year(year) { 366 } else { 365 };
-
-            if days_ts >= days_this_year {
-                days_ts -= days_this_year;
-            } else {
-                break;
-            }
-        }
-
-        let mut month = 0;
-        for m in 1..13 {
-            let days_this_month = match m {
-                4 | 6 | 9 | 11 => 30,
-                2 => { if TimeStamp::is_leap_year(year) { 29 } else { 28 } },
-                _ => 31
-            };
-
-            month = m;
-            if days_ts >= days_this_month {
-                days_ts -= days_this_month;
-            } else {
-                break;
-            }
-        }
-
-        TimeStamp {
-            timestamp: ts_u64,
-            year: year as i32,
-            month: month,
-            day: days_ts as i32 + 1,
-            hour: hours as i32,
-            minute: minutes as i32,
-            second: seconds as i32,
-            microsecond: microseconds as i32
-        }
-    }
-
-}
-
 
 // Variable size of pixel_depth * image_width * image_height
 // Frames block is frame_size * num_images
 // Frames block starts off at byte 178
 pub struct SerFrame {
     pub buffer:imagebuffer::ImageBuffer,
-    pub timestamp: TimeStamp
+    pub timestamp: timestamp::TimeStamp
 }
 
 // Header is a fixed size of 178 bytes
@@ -184,8 +96,8 @@ pub struct SerFile {
     pub observer: String,           // 40 bytes
     pub instrument: String,         // 40 bytes
     pub telescope: String,          // 40 bytes
-    pub date_time: TimeStamp,       // 8 bytes,
-    pub date_time_utc: TimeStamp,   // 8 bytes,
+    pub date_time: timestamp::TimeStamp,       // 8 bytes,
+    pub date_time_utc: timestamp::TimeStamp,   // 8 bytes,
     pub total_size: usize,          // Total file size (used for validation)
     map: Mmap
 }
@@ -220,7 +132,7 @@ impl SerFrame {
     pub fn new(buffer:imagebuffer::ImageBuffer, timestamp:u64) -> SerFrame {
         SerFrame {
             buffer:buffer,
-            timestamp:TimeStamp::from_u64(timestamp)
+            timestamp:timestamp::TimeStamp::from_u64(timestamp)
         }
     }
 }
@@ -268,8 +180,8 @@ impl SerFile {
             observer: read_string(&map, 42, 40),                             // 40 bytes, start at 42
             instrument: read_string(&map, 82, 40),                           // 40 bytes, start at 82
             telescope: read_string(&map, 122, 40),                           // 40 bytes, start at 122
-            date_time: TimeStamp::from_u64(read_u64(&map, 162)),      // 8 bytes, start at 162
-            date_time_utc: TimeStamp::from_u64(read_u64(&map, 170)),  // 8 bytes, start at 170
+            date_time: timestamp::TimeStamp::from_u64(read_u64(&map, 162)),      // 8 bytes, start at 162
+            date_time_utc: timestamp::TimeStamp::from_u64(read_u64(&map, 170)),  // 8 bytes, start at 170
             total_size: map.len(),
             map: map
         };

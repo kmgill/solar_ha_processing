@@ -72,6 +72,12 @@ pub mod param {
     pub const PARAM_OBJ_DETECT_THRESHOLD : &str = "threshold";
     pub const PARAM_OBJ_DETECT_THRESHOLD_SHORT : &str = "t";
 
+    pub const PARAM_LATITUDE : &str = "latitude";
+    pub const PARAM_LATITUDE_SHORT : &str = "l";
+
+    pub const PARAM_LONGITUDE : &str = "longitude";
+    pub const PARAM_LONGITUDE_SHORT : &str = "L";
+
     // Hot pixel correction window size
     pub const PARAM_HPC_WINDOW_SIZE : &str = "hpc_window";
     pub const PARAM_HPC_WINDOW_SIZE_SHORT : &str = "w";

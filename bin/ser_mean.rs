@@ -1,5 +1,4 @@
 use solar_ha_processing::{
-    ser,
     constants,
     print,
     path,
@@ -12,9 +11,6 @@ extern crate clap;
 
 use clap::{Arg, App};
 use std::process;
-
-
-
 
 fn main() {
     let matches = App::new(crate_name!())
@@ -65,17 +61,4 @@ fn main() {
 
     vprintln!("Saving stack buffer to {}", output_file_path);
     mean_stack.save(output_file_path).expect("Failed to save output frame image");
-    // match ser_file.pixel_depth {
-    //     8 => {
-    //         frame.buffer.save_8bit(output_file_path).expect("Failed to save output frame image");
-    //     },
-    //     16 => {
-    //         frame.buffer.save_16bit(output_file_path).expect("Failed to save output frame image");
-    //     },
-    //     _ => {
-    //         eprintln!("Error: Unsupported pixel depth encountered");
-    //         process::exit(4);
-    //     }
-    // };
-
 }

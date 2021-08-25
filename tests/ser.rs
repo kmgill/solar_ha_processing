@@ -1,7 +1,8 @@
 
 use solar_ha_processing::{
     ser,
-    path
+    path,
+    timestamp
 };
 
 
@@ -31,8 +32,8 @@ fn test_load_ser() {
     assert_eq!(ser_file.observer, "                                        ");
     assert_eq!(ser_file.instrument, "ASI=ZWO ASI174MMtemp=46.5               ");
     assert_eq!(ser_file.telescope, "fps=92.17gain=160exp=1.50               ");
-    assert_eq!(ser_file.date_time, ser::TimeStamp::from_u64(637648348476600000));
-    assert_eq!(ser_file.date_time_utc, ser::TimeStamp::from_u64(637648348476340000));
+    assert_eq!(ser_file.date_time, timestamp::TimeStamp::from_u64(637648348476600000));
+    assert_eq!(ser_file.date_time_utc, timestamp::TimeStamp::from_u64(637648348476340000));
     assert_eq!(ser_file.total_size, 268377154);
 
     // Validate timestamps are present in file
@@ -99,7 +100,7 @@ fn test_fetch_frame() {
     assert_eq!(frame_0.buffer.height, ser_file.image_height);
 
     println!("Timestamp: {:?}", frame_0.timestamp);
-    assert_eq!(frame_0.timestamp, ser::TimeStamp::from_u64(637648348476340000)); // Need to validate this value
+    assert_eq!(frame_0.timestamp, timestamp::TimeStamp::from_u64(637648348476340000)); // Need to validate this value
 
     // Validate frame saves to disk. Check output manually
     //frame_0.buffer.save_8bit("testdata/test_frame_0.png").expect("Failed to save test frame to testdata directory");   

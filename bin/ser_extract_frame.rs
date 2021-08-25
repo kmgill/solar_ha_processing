@@ -89,5 +89,5 @@ fn main() {
         process::exit(3);
     }
 
-    frame.buffer.save_8bit(output_file_path).expect("Failed to save output frame image");
+    frame.buffer.save(output_file_path).expect("Failed to save output frame image");
 }

@@ -4,7 +4,6 @@ use crate::{
     path,
     vprintln,
     imagebuffer,
-    constants,
     enums,
     error
 };

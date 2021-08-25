@@ -230,16 +230,10 @@ impl ImageBuffer {
             empty:false,
             mask: if *mask != None { Some(mask.as_ref().unwrap().to_owned()) } else { None },
             mode: mode
-})
+        })
     }
 
-    pub fn from_file(file_path:&str) -> error::Result<ImageBuffer> {
-
-        if !path::file_exists(file_path) {
-            return Err(constants::status::FILE_NOT_FOUND);
-        }
-
-        let image_data = open(file_path).unwrap().into_luma16();
+    pub fn from_image_u8(image_data:&image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) -> error::Result<ImageBuffer> {
         let dims = image_data.dimensions();
 
         let width = dims.0 as usize;
@@ -258,7 +252,39 @@ impl ImageBuffer {
             }
         }
 
-        ImageBuffer::from_vec(v, width, height)
+        ImageBuffer::from_vec_as_mode(v, width, height, enums::ImageMode::U16BIT)
+    }
+
+    pub fn from_image_u16(image_data:&image::ImageBuffer<image::Rgba<u16>, std::vec::Vec<u16>>) -> error::Result<ImageBuffer> {
+        let dims = image_data.dimensions();
+
+        let width = dims.0 as usize;
+        let height = dims.1 as usize;
+        vprintln!("Input image dimensions: {:?}", image_data.dimensions());
+
+        let mut v:Vec<f32> = Vec::with_capacity(width * height);
+        v.resize(width * height, 0.0);
+
+        for y in 0..height {
+            for x in 0..width {
+                let pixel = image_data.get_pixel(x as u32, y as u32);
+                let value = pixel[0] as f32;
+                let idx = y * width + x;
+                v[idx] = value;
+            }
+        }
+
+        ImageBuffer::from_vec_as_mode(v, width, height, enums::ImageMode::U16BIT)
+    }
+
+    pub fn from_file(file_path:&str) -> error::Result<ImageBuffer> {
+
+        if !path::file_exists(file_path) {
+            return Err(constants::status::FILE_NOT_FOUND);
+        }
+
+        let image_data = open(file_path).unwrap().into_rgba16();
+        ImageBuffer::from_image_u16(&image_data)
     }
 
     fn buffer_to_mask(&self, buffer:&ImageBuffer) -> error::Result<Vec<bool>> {
@@ -637,7 +663,24 @@ impl ImageBuffer {
         Ok(MinMax{min:mn, max:mx})
     }
 
-    pub fn save_16bit(&self, to_file:&str) -> error::Result<&str> {
+    pub fn buffer_to_image_8bit(&self) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+        let mut out_img = DynamicImage::new_rgba8(self.width as u32, self.height as u32).into_rgba8();
+        
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if self.get_mask_at_point(x, y).unwrap() {
+                    let val = self.get(x, y).unwrap().round() as u8;
+                    let a = if self.get_mask_at_point(x, y).unwrap() { 255 } else { 0 };
+                    out_img.put_pixel(x as u32, y as u32, Rgba([val, val, val, a]));
+                }
+            }
+        }
+
+        out_img
+    }
+
+    pub fn buffer_to_image_16bit(&self) -> image::ImageBuffer<image::Rgba<u16>, std::vec::Vec<u16>>
+    {
         let mut out_img = DynamicImage::new_rgba16(self.width as u32, self.height as u32).into_rgba16();
         
         for y in 0..self.height {
@@ -649,6 +692,12 @@ impl ImageBuffer {
                 }
             }
         }
+
+        out_img
+    }
+
+    pub fn save_16bit(&self, to_file:&str) -> error::Result<&str> {
+        let out_img = self.buffer_to_image_16bit();
 
         vprintln!("Writing image buffer to file at {}", to_file);
         if path::parent_exists_and_writable(&to_file) {
@@ -663,17 +712,7 @@ impl ImageBuffer {
     }
 
     pub fn save_8bit(&self, to_file:&str) -> error::Result<&str> {
-        let mut out_img = DynamicImage::new_rgba8(self.width as u32, self.height as u32).into_rgba8();
-        
-        for y in 0..self.height {
-            for x in 0..self.width {
-                if self.get_mask_at_point(x, y).unwrap() {
-                    let val = self.get(x, y).unwrap().round() as u8;
-                    let a = if self.get_mask_at_point(x, y).unwrap() { 255 } else { 0 };
-                    out_img.put_pixel(x as u32, y as u32, Rgba([val, val, val, a]));
-                }
-            }
-        }
+        let out_img = self.buffer_to_image_8bit();
 
         vprintln!("Writing image buffer to file at {}", to_file);
         if path::parent_exists_and_writable(&to_file) {
