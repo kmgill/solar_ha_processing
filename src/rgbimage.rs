@@ -8,12 +8,10 @@ use crate::{
     enums, 
     ok,
     debayer,
-    hotpixel,
-    util
+    hotpixel
 };
 
 use image::{
-    open, 
     DynamicImage, 
     Rgba
 };

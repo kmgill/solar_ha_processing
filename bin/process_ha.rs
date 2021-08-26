@@ -4,7 +4,6 @@ use solar_ha_processing::{
     constants,
     print,
     path,
-    vprintln,
     util,
     processing
 };
