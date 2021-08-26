@@ -158,21 +158,18 @@ impl HaProcessing {
     pub fn finalize(&self, out_path:&str) -> error::Result<&str> {
 
         if self.frame_count > 0 {
-            let mut mean_buffer = self.buffer.scale(1.0 / self.frame_count as f32).unwrap();
+            let mean_buffer = self.buffer.scale(1.0 / self.frame_count as f32).unwrap();
             let stackmm = mean_buffer.get_min_max().unwrap();
             vprintln!("    Stack Min/Max : {}, {} ({} images)", stackmm.min, stackmm.max, self.frame_count);
 
-            if mean_buffer.mode == enums::ImageMode::U8BIT {
-                let mnmx = mean_buffer.get_min_max().unwrap();
-                mean_buffer = mean_buffer.normalize_force_minmax(0.0, 65535.0, 0.0, mnmx.max).unwrap();
-                mean_buffer.mode = enums::ImageMode::U16BIT;
+            let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&mean_buffer, &mean_buffer, &mean_buffer, enums::ImageMode::U8BIT).unwrap();
+            rgb.apply_weight(self.red_scalar, self.green_scalar, self.blue_scalar).expect("Error applying channel weights");
+
+            if rgb.get_mode() == enums::ImageMode::U8BIT {
+                rgb.normalize_to_16bit().expect("Error normalizing data to 16 bit value range");
             }
 
-            let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&mean_buffer, &mean_buffer, &mean_buffer, enums::ImageMode::U16BIT).unwrap();
-            rgb.apply_weight(self.red_scalar, self.green_scalar, self.blue_scalar).expect("Error applying channel weights");
             rgb.save(out_path).expect("Error: Error saving output image");
-
-            //mean_buffer.save(out_path).expect("Error: Error saving output image");
 
             ok!()
         } else {
