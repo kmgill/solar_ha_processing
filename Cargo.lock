@@ -710,6 +710,7 @@ dependencies = [
  "imageproc",
  "memmap",
  "platforms",
+ "rayon",
  "serde",
  "serde_json",
  "sscanf",

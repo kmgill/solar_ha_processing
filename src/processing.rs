@@ -15,6 +15,9 @@ use crate::{
     ok
 };
 
+use rayon::prelude::*;
+use std::sync::{Arc, Mutex};
+
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone)]
@@ -166,11 +169,8 @@ impl HaProcessing {
     }
 
 
-    pub fn add_frame(&mut self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp) {
-
-        let mut frame_buffer = buffer.clone();
-
-        frame_buffer = self.apply_dark_flat_on_buffer(&frame_buffer).unwrap();
+    pub fn process_frame(&self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp) -> imagebuffer::ImageBuffer {
+        let mut frame_buffer = self.apply_dark_flat_on_buffer(&buffer).unwrap();
 
         let com = frame_buffer.calc_center_of_mass_offset(40.0).unwrap();
         frame_buffer = frame_buffer.shift(com.h, com.v).unwrap();
@@ -185,8 +185,7 @@ impl HaProcessing {
         vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
         frame_buffer = imagerot::rotate(&frame_buffer, -1.0 * rotation.to_radians() as f32).expect("Error rotating image");
 
-        self.buffer = self.buffer.add(&frame_buffer).unwrap();
-        self.frame_count += 1;
+        frame_buffer
     }
 
     pub fn finalize(&self, out_path:&str) -> error::Result<&str> {
@@ -230,34 +229,45 @@ impl HaProcessing {
     
             // TODO: Detect and reject glitch frames
     
-            self.add_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
+            let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
+            self.add_frame(&frame);
         }
     
     }
 
-    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>) {
 
-        for frame_record in frame_records {
-            if ! path::file_exists(frame_record.source_file.as_str()) {
-                panic!("File not found: {}", frame_record.source_file);
-            }
-
-            // Doing this for each record is pretty inefficient....
-            let ser_file = ser::SerFile::load_ser(frame_record.source_file.as_str()).expect("Unable to load SER file");
-
-            let frame_buffer = ser_file.get_frame(frame_record.frame_id).unwrap();
-            self.add_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
-        }
-
+    fn add_frame(&mut self, buffer:&imagebuffer::ImageBuffer) {
+        self.buffer = self.buffer.add(&buffer).unwrap();
+        self.frame_count += 1;
     }
 
-    fn determine_quality_in_ser(ser_file_path:&str, frame_records:&mut Vec<FrameRecord>) {
+    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>) {
+
+        let mut self_buffer = self.buffer.clone();
+        let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
+
+        frame_records.par_iter().for_each(|fr| {
+            let ser_file = ser::SerFile::load_ser(fr.source_file.as_str()).expect("Unable to load SER file");
+            let frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
+            let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
+
+            // This is a bottleneck to parallelization. 
+            buffer_mtx.lock().unwrap().add_mut(&frame);
+        });
+
+        self.buffer = self_buffer.clone();
+        self.frame_count += frame_records.len() as u32;
+    }
+
+    fn determine_quality_in_ser(ser_file_path:&str) -> Vec<FrameRecord>{
         if ! path::file_exists(ser_file_path) {
             panic!("File not found: {}", ser_file_path);
         }
     
         let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
         ser_file.validate();
+
+        let mut frame_records: Vec<FrameRecord> = vec!();
 
         for i in 0..ser_file.frame_count {
             // if i >= 10 {
@@ -273,14 +283,19 @@ impl HaProcessing {
             };
             frame_records.push(fr);
         }
+
+        frame_records
     }
 
     fn determine_quality_across_sers(ser_files:&Vec<&str>) -> Vec<FrameRecord>{
         let mut frame_records: Vec<FrameRecord> = vec!();
 
-        for ser_file_path in ser_files.iter() {
-            HaProcessing::determine_quality_in_ser(&ser_file_path, &mut frame_records);
-        }
+        let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
+
+        ser_files.par_iter().for_each(|sf| {
+            let mut list = HaProcessing::determine_quality_in_ser(&sf);
+            frame_records_mtx.lock().unwrap().append(&mut list);
+        });
 
         frame_records.sort(); // Sorts in ascending order
         frame_records.reverse();
@@ -289,25 +304,32 @@ impl HaProcessing {
 
     pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8) {
 
-        if limit_top_pct > 100 {
-            panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
+        if limit_top_pct == 100 {
+
+            // If the limit is 100% then there's no reason to go through the quality estimation. Just process each frame.
+            for ser_file_path in ser_files.iter() {
+                self.process_ser_file(ser_file_path);
+            }
+
+        } else {
+
+            if limit_top_pct > 100 {
+                panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
+            }
+    
+            let frame_records: Vec<FrameRecord> = HaProcessing::determine_quality_across_sers(&ser_files);
+    
+            let max_frame = ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
+    
+            let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
+
+            self.process_frame_records(&limited_frame_records);
+
+            vprintln!("Total frames considered: {}", frame_records.len());
+            vprintln!("Limited to top {}% of frames", limit_top_pct);
+            vprintln!("Processed with {} frames", limited_frame_records.len());
         }
-
-        let frame_records: Vec<FrameRecord> = HaProcessing::determine_quality_across_sers(&ser_files);
-
-        let max_frame = ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
-
-        let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
-
-        vprintln!("Total frames being considered: {}", frame_records.len());
-        vprintln!("Limiting to top {}% of frames", limit_top_pct);
-        vprintln!("Processing with {} frames", limited_frame_records.len());
-
-
-        self.process_frame_records(&frame_records);
-        // for ser_file_path in ser_files.iter() {
-        //     self.process_ser_file(ser_file_path);
-        // }
+        
     }
 
 }

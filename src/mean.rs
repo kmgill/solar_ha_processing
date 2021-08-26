@@ -8,6 +8,7 @@ use crate::{
     error
 };
 
+
 // Computes a simple mean stack of frames across a list of ser files.
 pub fn compute_mean(ser_files:&Vec<&str>, _skip_glitch_frames:bool) -> error::Result<imagebuffer::ImageBuffer> {
 

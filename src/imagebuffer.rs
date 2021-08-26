@@ -486,6 +486,19 @@ impl ImageBuffer {
         ImageBuffer::new_from_op(v, self.width, self.height, &self.mask, self.mode)
     }
 
+
+    pub fn add_mut(&mut self, other:&ImageBuffer) {
+        if self.width != other.width || self.height != other.height {
+            panic!("Array size mismatch");
+        }
+
+        for i in 0..self.buffer.len() {
+            if self.get_mask_at_index(i).unwrap() {
+                self.buffer[i] = self.buffer[i] + other.buffer[i];
+            }
+        }
+    }
+
     pub fn add(&self, other:&ImageBuffer) -> error::Result<ImageBuffer> {
 
         if self.width != other.width || self.height != other.height {
