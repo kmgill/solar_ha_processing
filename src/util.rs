@@ -33,6 +33,10 @@ pub fn string_is_valid_usize(s:&str) -> bool {
     string_is_valid_num::<usize>(s)
 }
 
+pub fn string_is_valid_u8(s:&str) -> bool {
+    string_is_valid_num::<u8>(s)
+}
+
 pub fn filename_char_at_pos(filename:&str, pos:usize) -> char {
     let bn = path::basename(&filename);
     bn.chars().nth(pos).unwrap()

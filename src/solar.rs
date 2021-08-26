@@ -8,13 +8,6 @@ pub mod util {
         degrees + (minutes / 60.0) + (seconds / 3600.0)
     }
 
-    pub fn radians(d:f64) -> f64 {
-        d * std::f64::consts::PI / 180.0
-    }
-    
-    pub fn degrees(r:f64) -> f64 {
-        r * 180.0 / std::f64::consts::PI
-    }
 }  
 
 

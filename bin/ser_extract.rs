@@ -5,7 +5,8 @@ use solar_ha_processing::{
     constants,
     print,
     path,
-    vprintln
+    vprintln,
+    quality
 };
 
 #[macro_use]
@@ -33,6 +34,13 @@ fn main() {
                         .help("Output directory")
                         .required(false)
                         .takes_value(true))
+                    .arg(Arg::with_name(constants::param::PARAM_QUALITY)
+                        .short(constants::param::PARAM_QUALITY_SHORT)
+                        .long(constants::param::PARAM_QUALITY)
+                        .value_name("QUALITY")
+                        .help("Quality estimation sorting")
+                        .required(false)
+                        .takes_value(false))
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
@@ -42,6 +50,7 @@ fn main() {
         print::set_verbose(true);
     }
 
+    let do_qual_sorting = matches.is_present(constants::param::PARAM_QUALITY);
 
     // If, for some weird reason, clap misses the missing parameter...
     if ! matches.is_present(constants::param::PARAM_INPUTS) {
@@ -68,7 +77,16 @@ fn main() {
         for f in 0..ser_file.frame_count {
             let frame = ser_file.get_frame(f).expect("Failed extracting frame");
 
-            let new_extension = format!("_{:0width$}.png", f, width = 5);
+            
+
+            let new_extension = match do_qual_sorting {
+                true => {
+                    let sd = quality::get_quality_estimation(&frame.buffer);
+                    format!("_{}_{:0width$}.png", (sd * 10000.0) as u32, f, width = 5)
+                },
+                false => format!("_{:0width$}.png", f, width = 5)
+            };
+
             let new_output_parent = format!("{}/{}", output_directory, path::basename(ser_file_path));
             let frame_output_path = new_output_parent.replace(".ser", &new_extension).replace(".SER", &new_extension);
             

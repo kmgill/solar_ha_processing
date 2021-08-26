@@ -45,5 +45,6 @@ memmap = "0.7.0"
 astro = "2.0.0"
 sun = "0.2.0"
 chrono = "0.4.19"
+fastblur = "0.1.1"
 
 

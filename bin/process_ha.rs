@@ -104,15 +104,20 @@ fn main() {
                         .value_name("THRESHOLD")
                         .help("Object detection threshold")
                         .required(false)
-                        .takes_value(true))          
+                        .takes_value(true))     
+                    .arg(Arg::with_name(constants::param::PARAM_QUALITY)
+                        .short(constants::param::PARAM_QUALITY_SHORT)
+                        .long(constants::param::PARAM_QUALITY)
+                        .value_name("QUALITY")
+                        .help("Quality limit (top % frames)")
+                        .required(false)
+                        .takes_value(true))        
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
                     .get_matches();
 
-    if matches.is_present(constants::param::PARAM_VERBOSE) {
-        print::set_verbose(true);
-    }
+    print::set_verbose(matches.is_present(constants::param::PARAM_VERBOSE));
 
     // If, for some weird reason, clap misses the missing parameter...
     if ! matches.is_present(constants::param::PARAM_INPUTS) {
@@ -271,6 +276,25 @@ fn main() {
         }
     };
     
+    let limit_top_pct = match matches.is_present(constants::param::PARAM_QUALITY) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_QUALITY).unwrap();
+            if util::string_is_valid_u8(&s) {
+                let p = s.parse::<u8>().unwrap();
+                if p <= 0 {
+                    panic!("Error: Quality limit percentage cannot be zero or below");
+                } else if p > 100 {
+                    panic!("Error: Quality limit percentage cannot exceed 100%");
+                }
+
+                p
+            } else {
+                eprintln!("Error: Invalid number specified for observer longitude");
+                process::exit(1);
+            }
+        },
+        false => 100
+    };
 
     let mut ha_processing = processing::HaProcessing::init_new(&flat_frame, 
                                                     &dark_frame, 
@@ -282,6 +306,6 @@ fn main() {
                                                     blue_scalar,
                                                     obs_latitude,
                                                     obs_longitude).expect("Failed to create processing context");
-    ha_processing.process_ser_files(&input_files);
+    ha_processing.process_ser_files(&input_files, limit_top_pct);
     ha_processing.finalize(&output_file).expect("Failed to finalize buffer");
 }

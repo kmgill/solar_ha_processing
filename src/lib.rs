@@ -18,3 +18,4 @@ pub mod solar;
 pub mod imagerot;
 pub mod timestamp;
 pub mod processing;
+pub mod quality;

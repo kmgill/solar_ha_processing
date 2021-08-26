@@ -1,11 +1,11 @@
 
 
 pub fn radians(d:f64) -> f64 {
-    d * std::f64::consts::PI / 180.0
+    d.to_radians()
 }
 
 pub fn degrees(r:f64) -> f64 {
-    r * 180.0 / std::f64::consts::PI
+    r.to_degrees()
 }
 
 //https://rust-lang-nursery.github.io/rust-cookbook/science/mathematics/statistics.html

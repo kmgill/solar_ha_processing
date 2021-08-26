@@ -11,10 +11,47 @@ use crate::{
     imagerot,
     timestamp,
     rgbimage,
+    quality,
     ok
 };
 
+use std::cmp::Ordering;
 
+#[derive(Debug, Clone)]
+struct FrameRecord {
+    source_file:String,
+    frame_id:usize,
+    quality_value:f32
+}
+
+
+impl Ord for FrameRecord {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.quality_value < other.quality_value {
+            Ordering::Less
+        } else if self.quality_value == other.quality_value {
+            Ordering::Equal
+        } else {
+            Ordering::Greater
+        }
+    }
+}
+
+impl PartialOrd for FrameRecord {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for FrameRecord {
+    fn eq(&self, other: &Self) -> bool {
+        self.quality_value == other.quality_value
+    }
+}
+
+impl Eq for FrameRecord {
+    
+}
 
 
 pub struct HaProcessing {
@@ -135,15 +172,12 @@ impl HaProcessing {
 
         frame_buffer = self.apply_dark_flat_on_buffer(&frame_buffer).unwrap();
 
-
         let com = frame_buffer.calc_center_of_mass_offset(40.0).unwrap();
         frame_buffer = frame_buffer.shift(com.h, com.v).unwrap();
-        
         
         let (alt, az) = solar::position::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts);
         let rotation = solar::parallactic_angle::from_lat_azimuth_altitude(self.obs_latitude as f64, az, alt);
         
-
         if self.width > 0 && self.height > 0 {
             frame_buffer = frame_buffer.crop(self.width, self.height).unwrap();
         }
@@ -189,9 +223,9 @@ impl HaProcessing {
         ser_file.validate();
     
         for i in 0..ser_file.frame_count {
-            // if i >= 3 {
-            //     break;
-            // }
+            if i >= 10 {
+                break;
+            }
             let frame_buffer = ser_file.get_frame(i).unwrap();
     
             // TODO: Detect and reject glitch frames
@@ -201,10 +235,79 @@ impl HaProcessing {
     
     }
 
-    pub fn process_ser_files(&mut self, ser_files:&Vec<&str>) {
-        for ser_file_path in ser_files.iter() {
-            self.process_ser_file(ser_file_path);
+    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>) {
+
+        for frame_record in frame_records {
+            if ! path::file_exists(frame_record.source_file.as_str()) {
+                panic!("File not found: {}", frame_record.source_file);
+            }
+
+            // Doing this for each record is pretty inefficient....
+            let ser_file = ser::SerFile::load_ser(frame_record.source_file.as_str()).expect("Unable to load SER file");
+
+            let frame_buffer = ser_file.get_frame(frame_record.frame_id).unwrap();
+            self.add_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
         }
+
+    }
+
+    fn determine_quality_in_ser(ser_file_path:&str, frame_records:&mut Vec<FrameRecord>) {
+        if ! path::file_exists(ser_file_path) {
+            panic!("File not found: {}", ser_file_path);
+        }
+    
+        let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
+        ser_file.validate();
+
+        for i in 0..ser_file.frame_count {
+            // if i >= 10 {
+            //     break;
+            // }
+            let frame_buffer = ser_file.get_frame(i).unwrap();
+            let qual = quality::get_quality_estimation(&frame_buffer.buffer);
+
+            let fr = FrameRecord{
+                source_file:ser_file_path.to_string(),
+                frame_id:i,
+                quality_value:qual
+            };
+            frame_records.push(fr);
+        }
+    }
+
+    fn determine_quality_across_sers(ser_files:&Vec<&str>) -> Vec<FrameRecord>{
+        let mut frame_records: Vec<FrameRecord> = vec!();
+
+        for ser_file_path in ser_files.iter() {
+            HaProcessing::determine_quality_in_ser(&ser_file_path, &mut frame_records);
+        }
+
+        frame_records.sort(); // Sorts in ascending order
+        frame_records.reverse();
+        frame_records
+    }
+
+    pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8) {
+
+        if limit_top_pct > 100 {
+            panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
+        }
+
+        let frame_records: Vec<FrameRecord> = HaProcessing::determine_quality_across_sers(&ser_files);
+
+        let max_frame = ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
+
+        let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
+
+        vprintln!("Total frames being considered: {}", frame_records.len());
+        vprintln!("Limiting to top {}% of frames", limit_top_pct);
+        vprintln!("Processing with {} frames", limited_frame_records.len());
+
+
+        self.process_frame_records(&frame_records);
+        // for ser_file_path in ser_files.iter() {
+        //     self.process_ser_file(ser_file_path);
+        // }
     }
 
 }

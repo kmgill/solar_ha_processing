@@ -85,6 +85,9 @@ pub mod param {
     pub const PARAM_ONLY_NEW : &str = "new";
     pub const PARAM_ONLY_NEW_SHORT : &str = "n";
 
+    pub const PARAM_QUALITY : &str = "quality";
+    pub const PARAM_QUALITY_SHORT : &str = "q";
+
     pub const PARAM_SCALE_FACTOR : &str = "factor";
     pub const PARAM_SCALE_FACTOR_SHORT : &str = "f";
 }
