@@ -60,6 +60,7 @@ impl Eq for FrameRecord {
 pub struct HaProcessing {
     pub flat_field:imagebuffer::ImageBuffer,
     pub dark_field:imagebuffer::ImageBuffer,
+    pub mask:imagebuffer::ImageBuffer,
     pub width:usize,
     pub height:usize,
     pub buffer:imagebuffer::ImageBuffer,
@@ -93,6 +94,7 @@ impl HaProcessing {
 
     pub fn init_new(flat_path:&str, 
                     dark_path:&str, 
+                    mask_file:&str,
                     crop_width:usize, 
                     crop_height:usize, 
                     obj_detect_threshold:f32, 
@@ -131,11 +133,22 @@ impl HaProcessing {
                 }
             }
         };
-    
+
+        let mask = match mask_file.len() {
+            0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
+            _ => {
+                if ! path::file_exists(mask_file) {
+                    panic!("File not found: {}", mask_file);
+                }
+                imagebuffer::ImageBuffer::from_file(mask_file).unwrap()
+            }
+        };
+
         Ok(
             HaProcessing {
                 flat_field:flat,
                 dark_field:dark,
+                mask:mask,
                 width:crop_width,
                 height:crop_height,
                 buffer:imagebuffer::ImageBuffer::new_as_mode(crop_width, crop_height, enums::ImageMode::U8BIT).unwrap(),
@@ -172,7 +185,7 @@ impl HaProcessing {
     pub fn process_frame(&self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp) -> imagebuffer::ImageBuffer {
         let mut frame_buffer = self.apply_dark_flat_on_buffer(&buffer).unwrap();
 
-        let com = frame_buffer.calc_center_of_mass_offset(40.0).unwrap();
+        let com = frame_buffer.calc_center_of_mass_offset(self.obj_detect_threshold).unwrap();
         frame_buffer = frame_buffer.shift(com.h, com.v).unwrap();
         
         let (alt, az) = solar::position::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts);
@@ -181,6 +194,7 @@ impl HaProcessing {
         if self.width > 0 && self.height > 0 {
             frame_buffer = frame_buffer.crop(self.width, self.height).unwrap();
         }
+
 
         vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
         frame_buffer = imagerot::rotate(&frame_buffer, -1.0 * rotation.to_radians() as f32).expect("Error rotating image");
@@ -197,6 +211,11 @@ impl HaProcessing {
 
             let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&mean_buffer, &mean_buffer, &mean_buffer, enums::ImageMode::U8BIT).unwrap();
             rgb.apply_weight(self.red_scalar, self.green_scalar, self.blue_scalar).expect("Error applying channel weights");
+
+            if ! self.mask.is_empty() {
+                rgb.apply_mask(&self.mask);
+            }
+            
 
             if rgb.get_mode() == enums::ImageMode::U8BIT {
                 rgb.normalize_to_16bit().expect("Error normalizing data to 16 bit value range");
@@ -222,7 +241,7 @@ impl HaProcessing {
         ser_file.validate();
     
         for i in 0..ser_file.frame_count {
-            if i >= 10 {
+            if i >= 30 {
                 break;
             }
             let frame_buffer = ser_file.get_frame(i).unwrap();

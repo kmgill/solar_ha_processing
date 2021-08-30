@@ -105,6 +105,13 @@ fn main() {
                         .help("Object detection threshold")
                         .required(false)
                         .takes_value(true))     
+                    .arg(Arg::with_name(constants::param::PARAM_MASK)
+                        .short(constants::param::PARAM_MASK_SHORT)
+                        .long(constants::param::PARAM_MASK)
+                        .value_name("MASK")
+                        .help("Image mask")
+                        .required(false)
+                        .takes_value(true))   
                     .arg(Arg::with_name(constants::param::PARAM_QUALITY)
                         .short(constants::param::PARAM_QUALITY_SHORT)
                         .long(constants::param::PARAM_QUALITY)
@@ -128,7 +135,7 @@ fn main() {
 
     let obj_detect_threshold = match matches.is_present(constants::param::PARAM_OBJ_DETECT_THRESHOLD) {
         true => {
-            let s = matches.value_of(constants::param::PARAM_CROP_WIDTH).unwrap();
+            let s = matches.value_of(constants::param::PARAM_OBJ_DETECT_THRESHOLD).unwrap();
             if util::string_is_valid_f32(&s) {
                 s.parse::<f32>().unwrap()
             } else {
@@ -203,6 +210,17 @@ fn main() {
             let f = String::from(matches.value_of(constants::param::PARAM_DARK_FRAME).unwrap());
             if ! path::file_exists(&f) {
                 eprintln!("Error: Dark file not found: {}", f);
+            }
+            f
+        },
+        false => String::from("")
+    };
+
+    let mask_file = match matches.is_present(constants::param::PARAM_MASK) {
+        true => {
+            let f = String::from(matches.value_of(constants::param::PARAM_MASK).unwrap());
+            if ! path::file_exists(&f) {
+                eprintln!("Error: Mask file not found: {}", f);
             }
             f
         },
@@ -298,6 +316,7 @@ fn main() {
 
     let mut ha_processing = processing::HaProcessing::init_new(&flat_frame, 
                                                     &dark_frame, 
+                                                    &mask_file,
                                                     crop_width, 
                                                     crop_height, 
                                                     obj_detect_threshold, 

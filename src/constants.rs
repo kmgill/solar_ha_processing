@@ -78,6 +78,9 @@ pub mod param {
     pub const PARAM_LONGITUDE : &str = "longitude";
     pub const PARAM_LONGITUDE_SHORT : &str = "L";
 
+    pub const PARAM_MASK : &str = "mask";
+    pub const PARAM_MASK_SHORT : &str = "m";
+
     // Hot pixel correction window size
     pub const PARAM_HPC_WINDOW_SIZE : &str = "hpc_window";
     pub const PARAM_HPC_WINDOW_SIZE_SHORT : &str = "w";

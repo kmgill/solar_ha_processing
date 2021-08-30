@@ -614,6 +614,7 @@ impl ImageBuffer {
             oy = (self.height as f32 / 2.0) - (oy / (count as f32));
         }
     
+        vprintln!("calc_center_of_mass_offset: {}, {}, {}", threshold, ox, oy);
         Ok(Offset{h:ox.round() as i32, v:oy.round() as i32})
     }
 
