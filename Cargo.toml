@@ -30,6 +30,10 @@ path = "bin/ser_mean.rs"
 name = "process_ha"
 path = "bin/process_ha.rs"
 
+[[bin]]
+name = "ha_add"
+path = "bin/ha_add.rs"
+
 [dependencies]
 image = "0.23.14"
 imageproc = "0.22.0"
