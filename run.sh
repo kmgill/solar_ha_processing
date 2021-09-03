@@ -1,7 +1,8 @@
 #!/bin/bash
 
-if [ $# -ge 1 ]; then
+if [ $# -lt 1 ]; then
     echo "USAGE: run.sh </dataroot>"
+    exit 1
 fi
 
 MASKROOT=~/repos/solar_ha_processing/masks/
