@@ -118,7 +118,21 @@ fn main() {
                         .value_name("QUALITY")
                         .help("Quality limit (top % frames)")
                         .required(false)
-                        .takes_value(true))        
+                        .takes_value(true))      
+                    .arg(Arg::with_name(constants::param::PARAM_MIN_SIGMA)
+                        .short(constants::param::PARAM_MIN_SIGMA_SHORT)
+                        .long(constants::param::PARAM_MIN_SIGMA)
+                        .value_name("MINSIGMA")
+                        .help("Minimum sigma value (quality)")
+                        .required(false)
+                        .takes_value(true)) 
+                    .arg(Arg::with_name(constants::param::PARAM_MAX_SIGMA)
+                        .short(constants::param::PARAM_MAX_SIGMA_SHORT)
+                        .long(constants::param::PARAM_MAX_SIGMA)
+                        .value_name("MAXSIGMA")
+                        .help("Maximum sigma value (quality)")
+                        .required(false)
+                        .takes_value(true))      
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
@@ -261,6 +275,31 @@ fn main() {
         }
     }
 
+    let min_sigma = match matches.is_present(constants::param::PARAM_MIN_SIGMA) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_MIN_SIGMA).unwrap();
+            if util::string_is_valid_f32(&s) {
+                s.parse::<f32>().unwrap()
+            } else {
+                eprintln!("Error: Invalid number specified for minumum sigma");
+                process::exit(1);
+            }
+        },
+        false => 0.0
+    };
+
+    let max_sigma = match matches.is_present(constants::param::PARAM_MAX_SIGMA) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_MAX_SIGMA).unwrap();
+            if util::string_is_valid_f32(&s) {
+                s.parse::<f32>().unwrap()
+            } else {
+                eprintln!("Error: Invalid number specified for maximum sigma");
+                process::exit(1);
+            }
+        },
+        false => 100.0
+    };
 
     let obs_latitude = match matches.is_present(constants::param::PARAM_LATITUDE) {
         true => {
@@ -324,7 +363,9 @@ fn main() {
                                                     green_scalar, 
                                                     blue_scalar,
                                                     obs_latitude,
-                                                    obs_longitude).expect("Failed to create processing context");
+                                                    obs_longitude,
+                                                    min_sigma,
+                                                    max_sigma).expect("Failed to create processing context");
     ha_processing.process_ser_files(&input_files, limit_top_pct);
     ha_processing.finalize(&output_file).expect("Failed to finalize buffer");
 }

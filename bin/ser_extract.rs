@@ -77,8 +77,6 @@ fn main() {
         for f in 0..ser_file.frame_count {
             let frame = ser_file.get_frame(f).expect("Failed extracting frame");
 
-            
-
             let new_extension = match do_qual_sorting {
                 true => {
                     let sd = quality::get_quality_estimation(&frame.buffer);

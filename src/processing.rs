@@ -70,7 +70,13 @@ pub struct HaProcessing {
     pub green_scalar:f32,
     pub blue_scalar:f32,
     pub obs_latitude:f32,
-    pub obs_longitude:f32
+    pub obs_longitude:f32,
+    pub min_sigma:f32,
+
+    // Glitch frames tend to score a very high (outlier) sigma on the quality std-dev test. By specifying
+    // a maximum sigma, we can exclude those frames that would otherwise be included in the
+    // top n% of frames being stacked.
+    pub max_sigma:f32
 }
 
 impl HaProcessing {
@@ -102,7 +108,9 @@ impl HaProcessing {
                     green_scalar:f32, 
                     blue_scalar:f32,
                     obs_latitude:f32,
-                    obs_longitude:f32) -> error::Result<HaProcessing> {
+                    obs_longitude:f32,
+                    min_sigma:f32,
+                    max_sigma:f32) -> error::Result<HaProcessing> {
         let flat = match flat_path.len() {
             0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
             _ => {
@@ -158,7 +166,9 @@ impl HaProcessing {
                 green_scalar:green_scalar,
                 blue_scalar:blue_scalar,
                 obs_latitude:obs_latitude,
-                obs_longitude:obs_longitude
+                obs_longitude:obs_longitude,
+                min_sigma:min_sigma,
+                max_sigma:max_sigma
             }
         )
     }
@@ -209,13 +219,23 @@ impl HaProcessing {
             let stackmm = mean_buffer.get_min_max().unwrap();
             vprintln!("    Stack Min/Max : {}, {} ({} images)", stackmm.min, stackmm.max, self.frame_count);
 
-            let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&mean_buffer, &mean_buffer, &mean_buffer, enums::ImageMode::U8BIT).unwrap();
+
+            // if ! self.mask.is_empty() {
+            //     rgb.apply_mask(&self.mask);
+            //}
+
+            let buffer2 = match self.mask.is_empty() {
+                false => {
+                    let mm = self.mask.get_min_max().unwrap();
+                    let sc = self.mask.scale(1.0 / mm.max).unwrap();
+                    mean_buffer.multiply(&sc).unwrap()
+                },
+                true => mean_buffer
+            };
+
+            let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&buffer2, &buffer2, &buffer2, enums::ImageMode::U8BIT).unwrap();
             rgb.apply_weight(self.red_scalar, self.green_scalar, self.blue_scalar).expect("Error applying channel weights");
 
-            if ! self.mask.is_empty() {
-                rgb.apply_mask(&self.mask);
-            }
-            
 
             if rgb.get_mode() == enums::ImageMode::U8BIT {
                 rgb.normalize_to_16bit().expect("Error normalizing data to 16 bit value range");
@@ -230,35 +250,10 @@ impl HaProcessing {
 
     }
 
-
-    pub fn process_ser_file(&mut self, ser_file_path:&str) {
-
-        if ! path::file_exists(ser_file_path) {
-            panic!("File not found: {}", ser_file_path);
-        }
-    
-        let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
-        ser_file.validate();
-    
-        for i in 0..ser_file.frame_count {
-            if i >= 30 {
-                break;
-            }
-            let frame_buffer = ser_file.get_frame(i).unwrap();
-    
-            // TODO: Detect and reject glitch frames
-    
-            let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
-            self.add_frame(&frame);
-        }
-    
-    }
-
-
-    fn add_frame(&mut self, buffer:&imagebuffer::ImageBuffer) {
-        self.buffer = self.buffer.add(&buffer).unwrap();
-        self.frame_count += 1;
-    }
+    // fn add_frame(&mut self, buffer:&imagebuffer::ImageBuffer) {
+    //     self.buffer = self.buffer.add(&buffer).unwrap();
+    //     self.frame_count += 1;
+    // }
 
     fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>) {
 
@@ -266,19 +261,21 @@ impl HaProcessing {
         let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
 
         frame_records.par_iter().for_each(|fr| {
+
             let ser_file = ser::SerFile::load_ser(fr.source_file.as_str()).expect("Unable to load SER file");
             let frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
             let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
 
             // This is a bottleneck to parallelization. 
             buffer_mtx.lock().unwrap().add_mut(&frame);
+
         });
 
         self.buffer = self_buffer.clone();
         self.frame_count += frame_records.len() as u32;
     }
 
-    fn determine_quality_in_ser(ser_file_path:&str) -> Vec<FrameRecord>{
+    fn determine_quality_in_ser(&self, ser_file_path:&str) -> Vec<FrameRecord>{
         if ! path::file_exists(ser_file_path) {
             panic!("File not found: {}", ser_file_path);
         }
@@ -294,25 +291,31 @@ impl HaProcessing {
             // }
             let frame_buffer = ser_file.get_frame(i).unwrap();
             let qual = quality::get_quality_estimation(&frame_buffer.buffer);
+            
+            if qual >= self.min_sigma && qual <= self.max_sigma {
+                let fr = FrameRecord{
+                    source_file:ser_file_path.to_string(),
+                    frame_id:i,
+                    quality_value:qual
+                };
+                frame_records.push(fr);
+            } else {
+                vprintln!("Frame #{} in file {} falls out of sigma range and will be excluded", i, ser_file_path);
+            }
 
-            let fr = FrameRecord{
-                source_file:ser_file_path.to_string(),
-                frame_id:i,
-                quality_value:qual
-            };
-            frame_records.push(fr);
+            
         }
 
         frame_records
     }
 
-    fn determine_quality_across_sers(ser_files:&Vec<&str>) -> Vec<FrameRecord>{
+    fn determine_quality_across_sers(&self, ser_files:&Vec<&str>) -> Vec<FrameRecord>{
         let mut frame_records: Vec<FrameRecord> = vec!();
 
         let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
 
         ser_files.par_iter().for_each(|sf| {
-            let mut list = HaProcessing::determine_quality_in_ser(&sf);
+            let mut list = self.determine_quality_in_ser(&sf);
             frame_records_mtx.lock().unwrap().append(&mut list);
         });
 
@@ -323,32 +326,21 @@ impl HaProcessing {
 
     pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8) {
 
-        if limit_top_pct == 100 {
-
-            // If the limit is 100% then there's no reason to go through the quality estimation. Just process each frame.
-            for ser_file_path in ser_files.iter() {
-                self.process_ser_file(ser_file_path);
-            }
-
-        } else {
-
-            if limit_top_pct > 100 {
-                panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
-            }
-    
-            let frame_records: Vec<FrameRecord> = HaProcessing::determine_quality_across_sers(&ser_files);
-    
-            let max_frame = ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
-    
-            let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
-
-            self.process_frame_records(&limited_frame_records);
-
-            vprintln!("Total frames considered: {}", frame_records.len());
-            vprintln!("Limited to top {}% of frames", limit_top_pct);
-            vprintln!("Processed with {} frames", limited_frame_records.len());
+        if limit_top_pct > 100 {
+            panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
         }
-        
+
+        let frame_records: Vec<FrameRecord> = self.determine_quality_across_sers(&ser_files);
+
+        let max_frame = ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
+
+        let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
+
+        self.process_frame_records(&limited_frame_records);
+
+        vprintln!("Total frames considered: {}", frame_records.len());
+        vprintln!("Limited to top {}% of frames", limit_top_pct);
+        vprintln!("Processed with {} frames", limited_frame_records.len());
     }
 
 }

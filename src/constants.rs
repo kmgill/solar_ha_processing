@@ -78,6 +78,12 @@ pub mod param {
     pub const PARAM_LONGITUDE : &str = "longitude";
     pub const PARAM_LONGITUDE_SHORT : &str = "L";
 
+    pub const PARAM_MIN_SIGMA : &str = "minsigma";
+    pub const PARAM_MIN_SIGMA_SHORT : &str = "s";
+
+    pub const PARAM_MAX_SIGMA : &str = "maxsigma";
+    pub const PARAM_MAX_SIGMA_SHORT : &str = "S";
+
     pub const PARAM_MASK : &str = "mask";
     pub const PARAM_MASK_SHORT : &str = "m";
 
