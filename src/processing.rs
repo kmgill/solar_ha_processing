@@ -300,7 +300,7 @@ impl HaProcessing {
                 };
                 frame_records.push(fr);
             } else {
-                vprintln!("Frame #{} in file {} falls out of sigma range and will be excluded", i, ser_file_path);
+                vprintln!("Frame #{} in file {} falls out of sigma range ({}) and will be excluded", i, ser_file_path, qual);
             }
 
             
