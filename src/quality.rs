@@ -1,6 +1,7 @@
 use crate::{
     stats,
-    imagebuffer
+    imagebuffer,
+    enums
 };
 
 use fastblur::gaussian_blur;
@@ -48,8 +49,17 @@ fn apply_blur(image:&imagebuffer::ImageBuffer, amount:f32) -> imagebuffer::Image
 // A very simple image sharpness quantifier that computes the standard deviation of the difference between
 // an image and a blurred copy.
 pub fn get_quality_estimation(image:&imagebuffer::ImageBuffer) -> f32 {
-    let blurred = apply_blur(&image, 3.5);
-    let diff = blurred.subtract(&image).unwrap();
+
+    let scaled = match image.mode {
+        enums::ImageMode::U8BIT => image.clone(),
+        enums::ImageMode::U16BIT => {
+            let mm = image.get_min_max().unwrap();
+            image.normalize_force_minmax(0.0, 255.0, mm.min, mm.max).unwrap()
+        }
+    };
+
+    let blurred = apply_blur(&scaled, 3.5);
+    let diff = blurred.subtract(&scaled).unwrap();
     match stats::std_deviation(&diff.buffer[..]) {
         Some(sd) => sd,
         None => 0.0

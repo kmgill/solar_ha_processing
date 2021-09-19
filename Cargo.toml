@@ -43,7 +43,6 @@ const_format = "0.2.14"
 platforms = "1.1.0"
 toml = "0.5.8"
 serde = { version = "1.0.125", features = ["derive"] }
-sscanf = "0.1.1"
 string-builder = "0.2.0"
 memmap = "0.7.0"
 astro = "2.0.0"

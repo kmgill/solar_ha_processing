@@ -285,10 +285,9 @@ impl HaProcessing {
 
         let mut frame_records: Vec<FrameRecord> = vec!();
 
-        for i in 0..ser_file.frame_count {
-            // if i >= 10 {
-            //     break;
-            // }
+        let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
+
+        (0..ser_file.frame_count).into_par_iter().for_each(|i| {
             let frame_buffer = ser_file.get_frame(i).unwrap();
             let qual = quality::get_quality_estimation(&frame_buffer.buffer);
             
@@ -298,13 +297,11 @@ impl HaProcessing {
                     frame_id:i,
                     quality_value:qual
                 };
-                frame_records.push(fr);
+                frame_records_mtx.lock().unwrap().push(fr);
             } else {
                 vprintln!("Frame #{} in file {} falls out of sigma range ({}) and will be excluded", i, ser_file_path, qual);
             }
-
-            
-        }
+        });
 
         frame_records
     }
