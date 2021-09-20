@@ -10,6 +10,8 @@ use solar_ha_processing::{
     util
 };
 
+use std::fs;
+
 #[macro_use]
 extern crate clap;
 
@@ -106,10 +108,21 @@ fn main() {
             process::exit(2);
         }
 
-        let output_directory = match matches.is_present(constants::param::PARAM_OUTPUT) {
+        let mut output_directory = match matches.is_present(constants::param::PARAM_OUTPUT) {
             true => String::from(matches.value_of(constants::param::PARAM_OUTPUT).unwrap()),
             false => path::get_parent(ser_file_path)
         };
+
+        if input_files.len() > 1 {
+            let bn = path::basename(ser_file_path);
+            let out_file_base = bn.replace(".ser", "").replace(".SER", "");
+            output_directory = format!("{}/{}", &output_directory, &out_file_base);
+            if ! path::file_exists(&output_directory.as_str()) {
+                let err = format!("Failed to create output directory {}", &output_directory);
+                fs::create_dir(&output_directory).expect(err.as_str());
+            }
+        }
+
 
         let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
         ser_file.validate();
