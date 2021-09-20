@@ -6,7 +6,8 @@ use solar_ha_processing::{
     print,
     path,
     vprintln,
-    quality
+    quality,
+    util
 };
 
 #[macro_use]
@@ -41,6 +42,20 @@ fn main() {
                         .help("Quality estimation sorting")
                         .required(false)
                         .takes_value(false))
+                    .arg(Arg::with_name(constants::param::PARAM_MIN_SIGMA)
+                        .short(constants::param::PARAM_MIN_SIGMA_SHORT)
+                        .long(constants::param::PARAM_MIN_SIGMA)
+                        .value_name("MINSIGMA")
+                        .help("Minimum sigma value (quality)")
+                        .required(false)
+                        .takes_value(true)) 
+                    .arg(Arg::with_name(constants::param::PARAM_MAX_SIGMA)
+                        .short(constants::param::PARAM_MAX_SIGMA_SHORT)
+                        .long(constants::param::PARAM_MAX_SIGMA)
+                        .value_name("MAXSIGMA")
+                        .help("Maximum sigma value (quality)")
+                        .required(false)
+                        .takes_value(true))  
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
@@ -58,6 +73,31 @@ fn main() {
         process::exit(1);
     }
 
+    let min_sigma = match matches.is_present(constants::param::PARAM_MIN_SIGMA) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_MIN_SIGMA).unwrap();
+            if util::string_is_valid_f32(&s) {
+                s.parse::<f32>().unwrap()
+            } else {
+                eprintln!("Error: Invalid number specified for minumum sigma");
+                process::exit(1);
+            }
+        },
+        false => 0.0
+    };
+
+    let max_sigma = match matches.is_present(constants::param::PARAM_MAX_SIGMA) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_MAX_SIGMA).unwrap();
+            if util::string_is_valid_f32(&s) {
+                s.parse::<f32>().unwrap()
+            } else {
+                eprintln!("Error: Invalid number specified for maximum sigma");
+                process::exit(1);
+            }
+        },
+        false => 100.0
+    };
 
     let input_files: Vec<&str> = matches.values_of(constants::param::PARAM_INPUTS).unwrap().collect();
     for ser_file_path in input_files.iter() {
@@ -74,12 +114,19 @@ fn main() {
         let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
         ser_file.validate();
 
+        
+
         for f in 0..ser_file.frame_count {
             let frame = ser_file.get_frame(f).expect("Failed extracting frame");
+            let sd = quality::get_quality_estimation(&frame.buffer);
+
+            if sd < min_sigma || sd > max_sigma {
+                vprintln!("Frame #{} is outside of sigma range ({})", f, sd);
+                continue;
+            }
 
             let new_extension = match do_qual_sorting {
                 true => {
-                    let sd = quality::get_quality_estimation(&frame.buffer);
                     format!("_{}_{:0width$}.png", (sd * 10000.0) as u32, f, width = 5)
                 },
                 false => format!("_{:0width$}.png", f, width = 5)
