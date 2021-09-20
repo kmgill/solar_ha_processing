@@ -11,6 +11,7 @@ use solar_ha_processing::{
 };
 
 use std::fs;
+use rayon::prelude::*;
 
 #[macro_use]
 extern crate clap;
@@ -127,28 +128,26 @@ fn main() {
         let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
         ser_file.validate();
 
-        
-
-        for f in 0..ser_file.frame_count {
-            let frame = ser_file.get_frame(f).expect("Failed extracting frame");
+        (0..ser_file.frame_count).into_par_iter().for_each(|i| {
+            let frame = ser_file.get_frame(i).expect("Failed extracting frame");
             let sd = quality::get_quality_estimation(&frame.buffer);
 
             if sd < min_sigma || sd > max_sigma {
-                vprintln!("Frame #{} is outside of sigma range ({})", f, sd);
-                continue;
+                vprintln!("Frame #{} is outside of sigma range ({})", i, sd);
+                return;
             }
 
             let new_extension = match do_qual_sorting {
                 true => {
-                    format!("_{}_{:0width$}.png", (sd * 10000.0) as u32, f, width = 5)
+                    format!("_{}_{:0width$}.png", (sd * 10000.0) as u32, i, width = 5)
                 },
-                false => format!("_{:0width$}.png", f, width = 5)
+                false => format!("_{:0width$}.png", i, width = 5)
             };
 
             let new_output_parent = format!("{}/{}", output_directory, path::basename(ser_file_path));
             let frame_output_path = new_output_parent.replace(".ser", &new_extension).replace(".SER", &new_extension);
             
-            vprintln!("Frame #{} Output: {}", f, frame_output_path);
+            vprintln!("Frame #{} Output: {}", i, frame_output_path);
             
 
             if ! path::parent_exists_and_writable(&frame_output_path) {
@@ -159,7 +158,7 @@ fn main() {
 
             frame.buffer.save(&frame_output_path).expect("Failed to save output frame image");
 
-        }
+        });
     }
 
     
