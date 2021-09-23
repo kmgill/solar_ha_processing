@@ -18,7 +18,7 @@ PHOTO_ROOT=Sun_-_Whitelight_-_Tamron
 LOC_LATITUDE=0.0
 LOC_LONGITUDE=0.0
 
-CHROME_MAX_SCALE=90
+CHROME_MAX_SCALE=80
 PROM_MAX_SCALE=100
 PHOTO_MAX_SCALE=90
 
@@ -132,8 +132,8 @@ process_ha -v -i $DATAROOT/$PROM_ROOT/*/*ser \
 
 
 echo "Assembling Chrome/Prom Composite..."
-ha_add -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
-          $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png \
+ha_subtract -i $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png \
+          $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
           -o $DATAROOT/Sun_Composite_${DATA_TS}${VERSION}.png \
           -v
 

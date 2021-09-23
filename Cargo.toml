@@ -34,6 +34,11 @@ path = "bin/process_ha.rs"
 name = "ha_add"
 path = "bin/ha_add.rs"
 
+[[bin]]
+name = "ha_subtract"
+path = "bin/ha_subtract.rs"
+
+
 [dependencies]
 image = "0.23.14"
 imageproc = "0.22.0"
