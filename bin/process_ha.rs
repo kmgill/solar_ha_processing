@@ -132,7 +132,14 @@ fn main() {
                         .value_name("MAXSIGMA")
                         .help("Maximum sigma value (quality)")
                         .required(false)
-                        .takes_value(true))      
+                        .takes_value(true))    
+                    .arg(Arg::with_name(constants::param::PARAM_PCTOFMAX)
+                        .short(constants::param::PARAM_PCTOFMAX_SHORT)
+                        .long(constants::param::PARAM_PCTOFMAX)
+                        .value_name("PARAM_PCTOFMAX")
+                        .help("Scale maximum value to percentage max possible (0-100)") // As if that makes a lick of sense....
+                        .required(false)
+                        .takes_value(true))     
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
@@ -353,6 +360,27 @@ fn main() {
         false => 100
     };
 
+    let pct_of_max = match matches.is_present(constants::param::PARAM_PCTOFMAX) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_PCTOFMAX).unwrap();
+            if util::string_is_valid_f32(&s) {
+                let p = s.parse::<f32>().unwrap();
+
+                if p <= 0.0 {
+                    panic!("Error: Percentage cannot be zero or below");
+                } else if p > 100.0 {
+                    panic!("Error: Percentage cannot exceed 100%");
+                }
+
+                p
+            } else {
+                eprintln!("Error: Invalid number specified for scaled max percentage"); // Again, this still doesn't make any sense. What the hell am I talking about?
+                process::exit(1);
+            }
+        },
+        false => 100.0
+    };
+
     let mut ha_processing = processing::HaProcessing::init_new(&flat_frame, 
                                                     &dark_frame, 
                                                     &mask_file,
@@ -365,7 +393,8 @@ fn main() {
                                                     obs_latitude,
                                                     obs_longitude,
                                                     min_sigma,
-                                                    max_sigma).expect("Failed to create processing context");
+                                                    max_sigma,
+                                                    pct_of_max).expect("Failed to create processing context");
     ha_processing.process_ser_files(&input_files, limit_top_pct);
     ha_processing.finalize(&output_file).expect("Failed to finalize buffer");
 }

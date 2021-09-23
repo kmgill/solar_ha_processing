@@ -91,8 +91,8 @@ pub mod param {
     pub const PARAM_HPC_WINDOW_SIZE : &str = "hpc_window";
     pub const PARAM_HPC_WINDOW_SIZE_SHORT : &str = "w";
 
-    pub const PARAM_ONLY_NEW : &str = "new";
-    pub const PARAM_ONLY_NEW_SHORT : &str = "n";
+    pub const PARAM_PCTOFMAX : &str = "percentofmax";
+    pub const PARAM_PCTOFMAX_SHORT : &str = "P";
 
     pub const PARAM_QUALITY : &str = "quality";
     pub const PARAM_QUALITY_SHORT : &str = "q";

@@ -15,8 +15,12 @@ FLAT_ROOT=Sun_-_Flat
 PHOTO_ROOT=Sun_-_Whitelight_-_Tamron
 
 # Los Angeles: 34.05 -118.25 
-LOC_LATITUDE=0
-LOC_LONGITUDE=0
+LOC_LATITUDE=0.0
+LOC_LONGITUDE=0.0
+
+CHROME_MAX_SCALE=90
+PROM_MAX_SCALE=100
+PHOTO_MAX_SCALE=90
 
 # 8 Bit
 CHROME_THRESH=80
@@ -106,7 +110,8 @@ process_ha -v -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -L $LOC_LONGITUDE \
                 -q 25 \
                 -S $CHROME_SIGMA_MAX \
-                -s $CHROME_SIGMA_MIN 
+                -s $CHROME_SIGMA_MIN \
+                -P $CHROME_MAX_SCALE
                 #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
 
 echo "Starting Prominance Processing..."
@@ -121,7 +126,8 @@ process_ha -v -i $DATAROOT/$PROM_ROOT/*/*ser \
                 -L $LOC_LONGITUDE \
                 -q 25 \
                 -S $PROM_SIGMA_MAX \
-                -s $PROM_SIGMA_MIN
+                -s $PROM_SIGMA_MIN \
+                -P $PROM_MAX_SCALE
                 #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 
 
@@ -143,7 +149,8 @@ if [ -d $DATAROOT/$PHOTO_ROOT ]; then
                 -L $LOC_LONGITUDE \
                 -q 25 \
                 -S $PHOTO_SIGMA_MAX \
-                -s $PHOTO_SIGMA_MIN
+                -s $PHOTO_SIGMA_MIN \
+                -P $PHOTO_MAX_SCALE
                 #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 fi
 

@@ -275,7 +275,7 @@ impl RgbImage {
         ok!()
     }
 
-    pub fn normalize_to_16bit(&mut self) -> error::Result<&str> {
+    pub fn normalize_to_16bit(&mut self, pct_of_max:f32) -> error::Result<&str> {
 
         let r_mnmx = self._red.get_min_max().unwrap();
         let g_mnmx = self._green.get_min_max().unwrap();
@@ -284,7 +284,7 @@ impl RgbImage {
         let mut mx = if r_mnmx.max > g_mnmx.max { r_mnmx.max} else { g_mnmx.max };
         mx = if mx > b_mnmx.max { mx } else { b_mnmx.max };
 
-        self.normalize_to_16bit_with_max(mx).unwrap();
+        self.normalize_to_16bit_with_max(mx / pct_of_max).unwrap();
 
         ok!()
     }

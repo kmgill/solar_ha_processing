@@ -76,7 +76,12 @@ pub struct HaProcessing {
     // Glitch frames tend to score a very high (outlier) sigma on the quality std-dev test. By specifying
     // a maximum sigma, we can exclude those frames that would otherwise be included in the
     // top n% of frames being stacked.
-    pub max_sigma:f32
+    pub max_sigma:f32,
+
+    // This is a percentage (0 - 100) of the max possible value (65535 for unsigned 16 bit) that the maximum
+    // data values will scaled to. This is to prevent undesirable pixel saturation when sharpening in 
+    // applications such as RegiStax or ImPPG.
+    pub pct_of_max:f32
 }
 
 impl HaProcessing {
@@ -110,7 +115,8 @@ impl HaProcessing {
                     obs_latitude:f32,
                     obs_longitude:f32,
                     min_sigma:f32,
-                    max_sigma:f32) -> error::Result<HaProcessing> {
+                    max_sigma:f32,
+                    pct_of_max:f32) -> error::Result<HaProcessing> {
         let flat = match flat_path.len() {
             0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
             _ => {
@@ -168,7 +174,8 @@ impl HaProcessing {
                 obs_latitude:obs_latitude,
                 obs_longitude:obs_longitude,
                 min_sigma:min_sigma,
-                max_sigma:max_sigma
+                max_sigma:max_sigma,
+                pct_of_max:pct_of_max
             }
         )
     }
@@ -238,7 +245,7 @@ impl HaProcessing {
 
 
             if rgb.get_mode() == enums::ImageMode::U8BIT {
-                rgb.normalize_to_16bit().expect("Error normalizing data to 16 bit value range");
+                rgb.normalize_to_16bit(self.pct_of_max / 100.0).expect("Error normalizing data to 16 bit value range");
             }
 
             rgb.save(out_path).expect("Error: Error saving output image");
