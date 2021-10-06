@@ -1,11 +1,13 @@
 [package]
 name = "solar_ha_processing"
 version = "0.1.0"
-authors = ["Kevin M. Gill <kmsmgill@gmail.com>"]
+authors = ["Kevin M. Gill <apoapsys@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+description = "A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging "
+repository = "https://github.com/kmgill/solar_ha_processing"
+readme = "README.md"
+keywords = ["sun", "astrophotography", "science"]
+license = "MIT" 
 
 [lib]
 name = "solar_ha_processing"
