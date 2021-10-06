@@ -3,11 +3,32 @@ name = "solar_ha_processing"
 version = "0.1.0"
 authors = ["Kevin M. Gill <apoapsys@gmail.com>"]
 edition = "2018"
-description = "A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging "
+description = "A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging"
 repository = "https://github.com/kmgill/solar_ha_processing"
 readme = "README.md"
 keywords = ["sun", "astrophotography", "science"]
 license = "MIT" 
+
+[package.metadata.deb]
+maintainer = "Kevin M. Gill <apoapsys@gmail.com>"
+copyright = "2021, Kevin M. Gill <apoapsys@gmail.com>"
+license-file = ["LICENSE", "2"]
+extended-description = "A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging" 
+depends = "$auto"
+section = "science"
+priority = "optional"
+assets = [
+    ["target/release/ha_add", "usr/bin/", "755"],
+    ["target/release/ha_subtract", "usr/bin/", "755"],
+    ["target/release/process_ha", "usr/bin/", "755"],
+    ["target/release/ser_extract_frame", "usr/bin/", "755"],
+    ["target/release/ser_extract", "usr/bin/", "755"],
+    ["target/release/ser_info", "usr/bin/", "755"],
+    ["target/release/ser_mean", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/solar_ha_processing/README", "644"],
+    ["masks/*png", "usr/share/solar_ha_processing/masks/", "644"]
+]
+
 
 [lib]
 name = "solar_ha_processing"
@@ -45,12 +66,6 @@ path = "bin/ha_subtract.rs"
 image = "0.23.14"
 imageproc = "0.22.0"
 clap = "2.33.3"
-serde_json = "1.0.64"
-const_format = "0.2.14"
-platforms = "1.1.0"
-toml = "0.5.8"
-serde = { version = "1.0.125", features = ["derive"] }
-string-builder = "0.2.0"
 memmap = "0.7.0"
 astro = "2.0.0"
 sun = "0.2.0"
