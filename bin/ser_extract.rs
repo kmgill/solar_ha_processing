@@ -7,7 +7,9 @@ use solar_ha_processing::{
     path,
     vprintln,
     quality,
-    util
+    util,
+    processing,
+    imagebuffer
 };
 
 use std::fs;
@@ -58,7 +60,21 @@ fn main() {
                         .value_name("MAXSIGMA")
                         .help("Maximum sigma value (quality)")
                         .required(false)
-                        .takes_value(true))  
+                        .takes_value(true))
+                    .arg(Arg::with_name(constants::param::PARAM_FLAT_FRAME)
+                        .short(constants::param::PARAM_FLAT_FRAME_SHORT)
+                        .long(constants::param::PARAM_FLAT_FRAME)
+                        .value_name("FLAT")
+                        .help("Flat frame image")
+                        .required(false)
+                        .takes_value(true)) 
+                    .arg(Arg::with_name(constants::param::PARAM_DARK_FRAME)
+                        .short(constants::param::PARAM_DARK_FRAME_SHORT)
+                        .long(constants::param::PARAM_DARK_FRAME)
+                        .value_name("DARK")
+                        .help("Dark frame image")
+                        .required(false)
+                        .takes_value(true))   
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
@@ -102,6 +118,31 @@ fn main() {
         false => 100.0
     };
 
+    let flat_frame = match matches.is_present(constants::param::PARAM_FLAT_FRAME) {
+        true => {
+            let f = String::from(matches.value_of(constants::param::PARAM_FLAT_FRAME).unwrap());
+            if ! path::file_exists(&f) {
+                eprintln!("Error: Flat file not found: {}", f);
+            }
+            
+            processing::HaProcessing::create_mean_from_ser(&f).unwrap()
+
+        },
+        false => imagebuffer::ImageBuffer::new_empty().unwrap()
+    };
+
+    let dark_frame = match matches.is_present(constants::param::PARAM_DARK_FRAME) {
+        true => {
+            let f = String::from(matches.value_of(constants::param::PARAM_DARK_FRAME).unwrap());
+            if ! path::file_exists(&f) {
+                eprintln!("Error: Dark file not found: {}", f);
+            }
+            processing::HaProcessing::create_mean_from_ser(&f).unwrap()
+        },
+        false => imagebuffer::ImageBuffer::new_empty().unwrap()
+    };
+
+
     let input_files: Vec<&str> = matches.values_of(constants::param::PARAM_INPUTS).unwrap().collect();
     for ser_file_path in input_files.iter() {
         if ! path::file_exists(ser_file_path) {
@@ -130,7 +171,18 @@ fn main() {
 
         (0..ser_file.frame_count).into_par_iter().for_each(|i| {
             let frame = ser_file.get_frame(i).expect("Failed extracting frame");
-            let sd = quality::get_quality_estimation(&frame.buffer);
+
+            let calibrated_frame = match !dark_frame.is_empty() || !flat_frame.is_empty() {
+                true => {
+                    vprintln!("Applying frame calibration");
+                    processing::HaProcessing::apply_dark_flat_on_buffer(&flat_frame, &dark_frame, &frame.buffer).expect("Error calibrating frame")
+                },
+                false => {
+                    frame.buffer
+                }
+            };
+
+            let sd = quality::get_quality_estimation(&calibrated_frame);
 
             if sd < min_sigma || sd > max_sigma {
                 vprintln!("Frame #{} is outside of sigma range ({})", i, sd);
@@ -156,7 +208,7 @@ fn main() {
             }
 
 
-            frame.buffer.save(&frame_output_path).expect("Failed to save output frame image");
+            calibrated_frame.save(&frame_output_path).expect("Failed to save output frame image");
 
         });
     }

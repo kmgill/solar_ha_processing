@@ -93,7 +93,7 @@ impl HaProcessing {
         }
     }
 
-    fn create_mean_from_ser(ser_file_path:&str) -> error::Result<imagebuffer::ImageBuffer> {
+    pub fn create_mean_from_ser(ser_file_path:&str) -> error::Result<imagebuffer::ImageBuffer> {
         if ! HaProcessing::is_ser_file(ser_file_path) {
             Err("Not a SER file")
         } else {
@@ -180,27 +180,31 @@ impl HaProcessing {
         )
     }
 
-    fn apply_dark_flat_on_buffer(&self, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
+    pub fn apply_dark_flat_on_buffer(flat_field:&imagebuffer::ImageBuffer, dark_field:&imagebuffer::ImageBuffer, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
 
         let mut frame_buffer = buffer.clone();
-        if ! self.flat_field.is_empty() && ! self.dark_field.is_empty() {
-            let darkflat = self.flat_field.subtract(&self.dark_field).unwrap();
+        if ! flat_field.is_empty() && ! dark_field.is_empty() {
+            let darkflat = flat_field.subtract(&dark_field).unwrap();
             let mean_flat = darkflat.mean();
-            let frame_minus_dark = frame_buffer.subtract(&self.dark_field).unwrap();
-            frame_buffer = frame_minus_dark.scale(mean_flat).unwrap().divide(&self.flat_field).unwrap();
-        } else if ! self.flat_field.is_empty() && self.dark_field.is_empty() {
-            let mean_flat = self.flat_field.mean();
-            frame_buffer = frame_buffer.scale(mean_flat).unwrap().divide(&self.flat_field).unwrap();
-        } else if self.flat_field.is_empty() && ! self.dark_field.is_empty() {
-            frame_buffer = frame_buffer.subtract(&self.dark_field).unwrap();
+            let frame_minus_dark = frame_buffer.subtract(&dark_field).unwrap();
+            frame_buffer = frame_minus_dark.scale(mean_flat).unwrap().divide(&flat_field).unwrap();
+        } else if ! flat_field.is_empty() && dark_field.is_empty() {
+            let mean_flat = flat_field.mean();
+            frame_buffer = frame_buffer.scale(mean_flat).unwrap().divide(&flat_field).unwrap();
+        } else if flat_field.is_empty() && ! dark_field.is_empty() {
+            frame_buffer = frame_buffer.subtract(&dark_field).unwrap();
         }
 
         Ok(frame_buffer)
     }
 
+    fn _apply_dark_flat_on_buffer(&self, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
+        HaProcessing::apply_dark_flat_on_buffer(&self.flat_field, &self.dark_field, &buffer)
+    }
+
 
     pub fn process_frame(&self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp) -> imagebuffer::ImageBuffer {
-        let mut frame_buffer = self.apply_dark_flat_on_buffer(&buffer).unwrap();
+        let mut frame_buffer = self._apply_dark_flat_on_buffer(&buffer).unwrap();
 
         let com = frame_buffer.calc_center_of_mass_offset(self.obj_detect_threshold).unwrap();
         frame_buffer = frame_buffer.shift(com.h, com.v).unwrap();
