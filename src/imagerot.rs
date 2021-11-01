@@ -1,11 +1,13 @@
 
-use crate::{
+
+use sciimg::{
     imagebuffer,
-    enums,
+    enums::ImageMode,
     error
 };
 
 use image::Rgba;
+
 use imageproc::geometric_transformations::{
     rotate_about_center,
     Interpolation
@@ -30,7 +32,8 @@ pub fn rotate_16(buffer:&imagebuffer::ImageBuffer, theta:f32) -> error::Result<i
 
 pub fn rotate(buffer:&imagebuffer::ImageBuffer, theta:f32) -> error::Result<imagebuffer::ImageBuffer> {
     match buffer.mode {
-        enums::ImageMode::U8BIT => rotate_8(buffer, theta),
-        enums::ImageMode::U16BIT => rotate_16(buffer, theta)
+        ImageMode::U8BIT => rotate_8(buffer, theta),
+        ImageMode::U16BIT => rotate_16(buffer, theta),
+        _ => panic!("Unexpected bit depth encountered!")
     }
 }

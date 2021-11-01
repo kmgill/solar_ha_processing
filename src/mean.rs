@@ -2,12 +2,14 @@
 use crate::{
     ser,
     path,
-    vprintln,
-    imagebuffer,
-    enums,
-    error
+    vprintln
 };
 
+use sciimg::{
+    imagebuffer,
+    error,
+    enums::ImageMode
+};
 
 // Computes a simple mean stack of frames across a list of ser files.
 pub fn compute_mean(ser_files:&Vec<&str>, _skip_glitch_frames:bool) -> error::Result<imagebuffer::ImageBuffer> {
@@ -28,8 +30,8 @@ pub fn compute_mean(ser_files:&Vec<&str>, _skip_glitch_frames:bool) -> error::Re
                                                             ser_file.image_width, 
                                                             ser_file.image_height,
                                                             match ser_file.pixel_depth {
-                                                                8 => enums::ImageMode::U8BIT,
-                                                                _ => enums::ImageMode::U16BIT
+                                                                8 => ImageMode::U8BIT,
+                                                                _ => ImageMode::U16BIT
                                                             }
                                                         ).expect("Failed to allocate image buffer");
         }

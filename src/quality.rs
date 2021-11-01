@@ -1,7 +1,8 @@
-use crate::{
+
+use sciimg::{
     stats,
     imagebuffer,
-    enums
+    enums::ImageMode
 };
 
 use fastblur::gaussian_blur;
@@ -29,7 +30,7 @@ fn vec_to_buffer(data: Vec<[u8; 3]>, width:usize, height:usize, mask:&Option<Vec
     for y in 0..height {
         for x in 0..width {
             let idx = (y * width) + x;
-            newbuffer.put(x, y, data[idx][0] as f32).unwrap();
+            newbuffer.put(x, y, data[idx][0] as f32);
         }
     }
 
@@ -51,11 +52,12 @@ fn apply_blur(image:&imagebuffer::ImageBuffer, amount:f32) -> imagebuffer::Image
 pub fn get_quality_estimation(image:&imagebuffer::ImageBuffer) -> f32 {
 
     let scaled = match image.mode {
-        enums::ImageMode::U8BIT => image.clone(),
-        enums::ImageMode::U16BIT => {
+        ImageMode::U8BIT => image.clone(),
+        ImageMode::U16BIT => {
             let mm = image.get_min_max().unwrap();
             image.normalize_force_minmax(0.0, 255.0, mm.min, mm.max).unwrap()
-        }
+        },
+        _ => panic!("Unexpected bit depth encountered!")
     };
 
     let blurred = apply_blur(&scaled, 3.5);

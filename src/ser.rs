@@ -2,12 +2,15 @@
 // Technical specification: http://www.grischa-hahn.homepage.t-online.de/astro/ser/SER%20Doc%20V3b.pdf
 
 use crate::{
-    imagebuffer,
-    error,
     vprintln,
     print,
-    enums,
     timestamp
+};
+
+use sciimg::{
+    imagebuffer,
+    error,
+    enums::ImageMode
 };
 
 use std::convert::TryInto;
@@ -291,8 +294,8 @@ impl SerFile {
                     self.image_width, 
                     self.image_height,
                     match self.pixel_depth {
-                        8 => enums::ImageMode::U8BIT,
-                        _ => enums::ImageMode::U16BIT
+                        8 => ImageMode::U8BIT,
+                        _ => ImageMode::U16BIT
                     }
                 ).expect("Failed to allocate image buffer"),
                 self.get_frame_timestamp(frame_num).expect("Failed to extract frame timestamp")

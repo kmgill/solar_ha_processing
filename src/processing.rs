@@ -3,16 +3,19 @@ use crate::{
     constants,
     path,
     vprintln,
-    imagebuffer,
-    error,
-    enums,
     mean,
     solar,
     imagerot,
     timestamp,
-    rgbimage,
     quality,
     ok
+};
+
+use sciimg::{
+    imagebuffer,
+    error,
+    enums::ImageMode,
+    rgbimage
 };
 
 use rayon::prelude::*;
@@ -165,7 +168,7 @@ impl HaProcessing {
                 mask:mask,
                 width:crop_width,
                 height:crop_height,
-                buffer:imagebuffer::ImageBuffer::new_as_mode(crop_width, crop_height, enums::ImageMode::U8BIT).unwrap(),
+                buffer:imagebuffer::ImageBuffer::new_as_mode(crop_width, crop_height, ImageMode::U8BIT).unwrap(),
                 frame_count:0,
                 obj_detect_threshold:obj_detect_threshold,
                 red_scalar:red_scalar,
@@ -206,7 +209,7 @@ impl HaProcessing {
     pub fn process_frame(&self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp) -> imagebuffer::ImageBuffer {
         let mut frame_buffer = self._apply_dark_flat_on_buffer(&buffer).unwrap();
 
-        let com = frame_buffer.calc_center_of_mass_offset(self.obj_detect_threshold).unwrap();
+        let com = frame_buffer.calc_center_of_mass_offset(self.obj_detect_threshold);
         frame_buffer = frame_buffer.shift(com.h, com.v).unwrap();
         
         let (alt, az) = solar::position::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts);
@@ -244,15 +247,17 @@ impl HaProcessing {
                 true => mean_buffer
             };
 
-            let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&buffer2, &buffer2, &buffer2, enums::ImageMode::U8BIT).unwrap();
-            rgb.apply_weight(self.red_scalar, self.green_scalar, self.blue_scalar).expect("Error applying channel weights");
+            let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&buffer2, &buffer2, &buffer2, ImageMode::U8BIT).unwrap();
+            rgb.apply_weight_on_band(self.red_scalar, 0);
+            rgb.apply_weight_on_band(self.green_scalar, 1);
+            rgb.apply_weight_on_band(self.blue_scalar, 2);
 
 
-            if rgb.get_mode() == enums::ImageMode::U8BIT {
-                rgb.normalize_to_16bit(self.pct_of_max / 100.0).expect("Error normalizing data to 16 bit value range");
+            if rgb.get_mode() == ImageMode::U8BIT {
+                rgb.normalize_to_16bit_with_max(self.pct_of_max / 100.0);
             }
 
-            rgb.save(out_path).expect("Error: Error saving output image");
+            rgb.save(out_path);
 
             ok!()
         } else {

@@ -9,7 +9,12 @@ use solar_ha_processing::{
     quality,
     util,
     processing,
-    imagebuffer
+    
+};
+
+use sciimg::{
+    imagebuffer,
+    enums::ImageMode
 };
 
 use std::fs;
@@ -208,7 +213,7 @@ fn main() {
             }
 
 
-            calibrated_frame.save(&frame_output_path).expect("Failed to save output frame image");
+            calibrated_frame.save(&frame_output_path, ImageMode::U16BIT);
 
         });
     }

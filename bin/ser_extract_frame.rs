@@ -7,6 +7,10 @@ use solar_ha_processing::{
     path
 };
 
+use sciimg::{
+    enums::ImageMode
+};
+
 #[macro_use]
 extern crate clap;
 
@@ -89,5 +93,5 @@ fn main() {
         process::exit(3);
     }
 
-    frame.buffer.save(output_file_path).expect("Failed to save output frame image");
+    frame.buffer.save(output_file_path, ImageMode::U16BIT);
 }

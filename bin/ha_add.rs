@@ -2,8 +2,12 @@ use solar_ha_processing::{
     constants,
     print,
     path,
-    vprintln,
-    imagebuffer
+    vprintln
+};
+
+use sciimg::{
+    imagebuffer,
+    enums::ImageMode
 };
 
 #[macro_use]
@@ -84,6 +88,6 @@ fn main() {
     });
 
     vprintln!("Writing output file to {}", output_file);
-    composite.save(&output_file).expect("Error saving composite image");
+    composite.save(&output_file, ImageMode::U16BIT);
 
 }
