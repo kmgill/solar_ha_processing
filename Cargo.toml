@@ -1,6 +1,6 @@
 [package]
 name = "solar_ha_processing"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Kevin M. Gill <apoapsys@gmail.com>"]
 edition = "2018"
 description = "A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging"
