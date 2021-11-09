@@ -72,5 +72,5 @@ sun = "0.2.0"
 chrono = "0.4.19"
 fastblur = "0.1.1"
 rayon = "1.5.1"
-sciimg = "0.1.3"
+sciimg = "0.1.4"
 

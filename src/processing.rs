@@ -252,9 +252,10 @@ impl HaProcessing {
             rgb.apply_weight_on_band(self.green_scalar, 1);
             rgb.apply_weight_on_band(self.blue_scalar, 2);
 
-
+            
             if rgb.get_mode() == ImageMode::U8BIT {
-                rgb.normalize_to_16bit_with_max(self.pct_of_max / 100.0);
+                let (_, maxval) = rgb.get_min_max_all_channel();
+                rgb.normalize_to_16bit_with_max(maxval / (self.pct_of_max / 100.0));
             }
 
             rgb.save(out_path);
@@ -306,7 +307,7 @@ impl HaProcessing {
         (0..ser_file.frame_count).into_par_iter().for_each(|i| {
             let frame_buffer = ser_file.get_frame(i).unwrap();
             let qual = quality::get_quality_estimation(&frame_buffer.buffer);
-            
+            vprintln!("Quality value of frame {} is {}", ser_file_path, qual);
             if qual >= self.min_sigma && qual <= self.max_sigma {
                 let fr = FrameRecord{
                     source_file:ser_file_path.to_string(),
