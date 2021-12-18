@@ -12,11 +12,12 @@ CHROME_ROOT=Sun
 PROM_ROOT=Sun_-_Prominance
 DARK_ROOT=Sun_-_Dark
 FLAT_ROOT=Sun_-_Flat
+DARK_FLAT_ROOT=Sun_-_Flat_Dark
 PHOTO_ROOT=Sun_-_Whitelight_-_Tamron
 
 # Los Angeles: 34.05 -118.25 
-LOC_LATITUDE=0.0
-LOC_LONGITUDE=0.0
+LOC_LATITUDE=34.4327
+LOC_LONGITUDE=-118.4955
 
 CHROME_MAX_SCALE=95
 PROM_MAX_SCALE=100
@@ -87,6 +88,7 @@ echo Prominance Root: $DATAROOT/$PROM_ROOT
 echo Photosphere Root: $DATAROOT/$PHOTO_ROOT
 echo Flat Root: $DATAROOT/$FLAT_ROOT
 echo Dark Root: $DATAROOT/$DARK_ROOT
+echo Dark Flat Root: $DATAROOT/$DARK_FLAT_ROOT
 echo Expected Bit Depth: $BIT_DEPTH
 echo Data Timestamp: $DATA_TS
 echo Version Text: $VERSION
@@ -139,6 +141,7 @@ echo "Starting Chromosphere Processing..."
 process_ha -v -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -d $DATAROOT/$DARK_ROOT/*/*ser \
                 -f $DATAROOT/$FLAT_ROOT/*/*ser \
+                -F $DATAROOT/$DARK_FLAT_ROOT/*/*ser \
                 -o $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
                 -t $CHROME_THRESH \
                 -w $CROP_WIDTH \
@@ -157,6 +160,7 @@ if [ $HAS_PROM -eq 1 ]; then
     process_ha -v -i $DATAROOT/$PROM_ROOT/*/*ser \
                     -d $DATAROOT/$DARK_ROOT/*/*ser \
                     -f $DATAROOT/$FLAT_ROOT/*/*ser \
+                    -F $DATAROOT/$DARK_FLAT_ROOT/*/*ser \
                     -o $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png \
                     -t $PROM_THRESH \
                     -w $CROP_WIDTH \

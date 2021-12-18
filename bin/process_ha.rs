@@ -40,6 +40,13 @@ fn main() {
                         .help("Flat frame image")
                         .required(false)
                         .takes_value(true)) 
+                    .arg(Arg::with_name(constants::param::PARAM_DARK_FLAT_FRAME)
+                        .short(constants::param::PARAM_DARK_FLAT_FRAME_SHORT)
+                        .long(constants::param::PARAM_DARK_FLAT_FRAME)
+                        .value_name("DARKFLAT")
+                        .help("Dark flat frame image")
+                        .required(false)
+                        .takes_value(true)) 
                     .arg(Arg::with_name(constants::param::PARAM_DARK_FRAME)
                         .short(constants::param::PARAM_DARK_FRAME_SHORT)
                         .long(constants::param::PARAM_DARK_FRAME)
@@ -237,6 +244,17 @@ fn main() {
         false => String::from("")
     };
 
+    let dark_flat_frame = match matches.is_present(constants::param::PARAM_DARK_FLAT_FRAME) {
+        true => {
+            let f = String::from(matches.value_of(constants::param::PARAM_DARK_FLAT_FRAME).unwrap());
+            if ! path::file_exists(&f) {
+                eprintln!("Error: Dark flat file not found: {}", f);
+            }
+            f
+        },
+        false => String::from("")
+    };
+
     let mask_file = match matches.is_present(constants::param::PARAM_MASK) {
         true => {
             let f = String::from(matches.value_of(constants::param::PARAM_MASK).unwrap());
@@ -383,6 +401,7 @@ fn main() {
 
     let mut ha_processing = processing::HaProcessing::init_new(&flat_frame, 
                                                     &dark_frame, 
+                                                    &dark_flat_frame,
                                                     &mask_file,
                                                     crop_width, 
                                                     crop_height, 

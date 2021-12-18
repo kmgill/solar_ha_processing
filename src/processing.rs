@@ -63,6 +63,7 @@ impl Eq for FrameRecord {
 pub struct HaProcessing {
     pub flat_field:imagebuffer::ImageBuffer,
     pub dark_field:imagebuffer::ImageBuffer,
+    pub dark_flat_field:imagebuffer::ImageBuffer,
     pub mask:imagebuffer::ImageBuffer,
     pub width:usize,
     pub height:usize,
@@ -108,6 +109,7 @@ impl HaProcessing {
 
     pub fn init_new(flat_path:&str, 
                     dark_path:&str, 
+                    dark_flat_path:&str,
                     mask_file:&str,
                     crop_width:usize, 
                     crop_height:usize, 
@@ -151,6 +153,21 @@ impl HaProcessing {
             }
         };
 
+        let darkflat = match dark_flat_path.len() {
+            0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
+            _ => {
+                if ! path::file_exists(dark_flat_path) {
+                    panic!("File not found: {}", dark_flat_path);
+                }
+
+                if HaProcessing::is_ser_file(dark_flat_path) {
+                    HaProcessing::create_mean_from_ser(dark_flat_path).unwrap()
+                } else {
+                    imagebuffer::ImageBuffer::from_file(dark_flat_path).unwrap()
+                }
+            }
+        };
+
         let mask = match mask_file.len() {
             0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
             _ => {
@@ -165,6 +182,7 @@ impl HaProcessing {
             HaProcessing {
                 flat_field:flat,
                 dark_field:dark,
+                dark_flat_field:darkflat,
                 mask:mask,
                 width:crop_width,
                 height:crop_height,
@@ -183,10 +201,16 @@ impl HaProcessing {
         )
     }
 
-    pub fn apply_dark_flat_on_buffer(flat_field:&imagebuffer::ImageBuffer, dark_field:&imagebuffer::ImageBuffer, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
+    pub fn apply_dark_flat_on_buffer(flat_field:&imagebuffer::ImageBuffer, dark_field:&imagebuffer::ImageBuffer, dark_flat_field:&imagebuffer::ImageBuffer, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
 
         let mut frame_buffer = buffer.clone();
-        if ! flat_field.is_empty() && ! dark_field.is_empty() {
+        if ! flat_field.is_empty() && ! dark_field.is_empty()  && ! dark_flat_field.is_empty() {
+            let flat_minus_darkflat = flat_field.subtract(&dark_flat_field).unwrap();
+            let darkflat = flat_minus_darkflat.subtract(&dark_field).unwrap();
+            let mean_flat = darkflat.mean();
+            let frame_minus_dark = frame_buffer.subtract(&dark_field).unwrap();
+            frame_buffer = frame_minus_dark.scale(mean_flat).unwrap().divide(&flat_minus_darkflat).unwrap();
+        } else  if ! flat_field.is_empty() && ! dark_field.is_empty() {
             let darkflat = flat_field.subtract(&dark_field).unwrap();
             let mean_flat = darkflat.mean();
             let frame_minus_dark = frame_buffer.subtract(&dark_field).unwrap();
@@ -202,7 +226,7 @@ impl HaProcessing {
     }
 
     fn _apply_dark_flat_on_buffer(&self, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
-        HaProcessing::apply_dark_flat_on_buffer(&self.flat_field, &self.dark_field, &buffer)
+        HaProcessing::apply_dark_flat_on_buffer(&self.flat_field, &self.dark_field, &self.dark_flat_field, &buffer)
     }
 
 

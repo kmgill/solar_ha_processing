@@ -55,6 +55,9 @@ pub mod param {
     pub const PARAM_FLAT_FRAME : &str = "flat";
     pub const PARAM_FLAT_FRAME_SHORT : &str = "f";
 
+    pub const PARAM_DARK_FLAT_FRAME : &str = "darkflat";
+    pub const PARAM_DARK_FLAT_FRAME_SHORT : &str = "F";
+
     pub const PARAM_DARK_FRAME : &str = "dark";
     pub const PARAM_DARK_FRAME_SHORT : &str = "d";
 
