@@ -103,7 +103,7 @@ pub struct SerFile {
     pub date_time_utc: timestamp::TimeStamp,   // 8 bytes,
     pub total_size: usize,          // Total file size (used for validation)
     map: Mmap,
-    source_file:String
+    pub source_file:String
 }
 
 

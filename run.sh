@@ -16,8 +16,8 @@ DARK_FLAT_ROOT=Sun_-_Flat_Dark
 PHOTO_ROOT=Sun_-_Whitelight_-_Tamron
 
 # Los Angeles: 34.05 -118.25 
-LOC_LATITUDE=34.4327
-LOC_LONGITUDE=-118.4955
+LOC_LATITUDE=0.0
+LOC_LONGITUDE=0.0
 
 CHROME_MAX_SCALE=95
 PROM_MAX_SCALE=100
@@ -31,6 +31,7 @@ CROP_HEIGHT=1200
 check_file=`ls -1 $DATAROOT/$CHROME_ROOT/*/*ser | head -n 1`
 BIT_DEPTH=`ser_info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
+FRAME_LIMIT=2500
 
 if [ $BIT_DEPTH -eq 8 ]; then
     # 8 Bit
@@ -51,12 +52,12 @@ if [ $BIT_DEPTH -eq 8 ]; then
 elif [ $BIT_DEPTH -eq 16 ]; then
     # 16 Bit
     CHROME_THRESH=20560
-    CHROME_SIGMA_MIN=1.6
-    CHROME_SIGMA_MAX=3.0
+    CHROME_SIGMA_MIN=2.6
+    CHROME_SIGMA_MAX=5.0
     CHROME_TOP_PCT=80
 
     PROM_THRESH=40960
-    PROM_SIGMA_MIN=1.7
+    PROM_SIGMA_MIN=1.4
     PROM_SIGMA_MAX=5.0
     PROM_TOP_PCT=80
 
@@ -151,6 +152,7 @@ process_ha -v -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -q $CHROME_TOP_PCT \
                 -S $CHROME_SIGMA_MAX \
                 -s $CHROME_SIGMA_MIN \
+                -n $FRAME_LIMIT \
                 -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
                 #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
 
@@ -170,6 +172,7 @@ if [ $HAS_PROM -eq 1 ]; then
                     -q $PROM_TOP_PCT \
                     -S $PROM_SIGMA_MAX \
                     -s $PROM_SIGMA_MIN \
+                    -n $FRAME_LIMIT \
                     -P $PROM_MAX_SCALE 2>&1 | tee $DATAROOT/prominance_${DATA_TS}${VERSION}.log
                     #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 

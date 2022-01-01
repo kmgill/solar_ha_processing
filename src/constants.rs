@@ -90,6 +90,9 @@ pub mod param {
     pub const PARAM_MASK : &str = "mask";
     pub const PARAM_MASK_SHORT : &str = "m";
 
+    pub const PARAM_NUMBER_OF_FRAMES : &str = "num";
+    pub const PARAM_NUMBER_OF_FRAMES_SHORT : &str = "n";
+
     // Hot pixel correction window size
     pub const PARAM_HPC_WINDOW_SIZE : &str = "hpc_window";
     pub const PARAM_HPC_WINDOW_SIZE_SHORT : &str = "w";

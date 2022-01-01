@@ -147,6 +147,13 @@ fn main() {
                         .help("Scale maximum value to percentage max possible (0-100)") // As if that makes a lick of sense....
                         .required(false)
                         .takes_value(true))     
+                    .arg(Arg::with_name(constants::param::PARAM_NUMBER_OF_FRAMES)
+                        .short(constants::param::PARAM_NUMBER_OF_FRAMES_SHORT)
+                        .long(constants::param::PARAM_NUMBER_OF_FRAMES)
+                        .value_name("PARAM_NUMBER_OF_FRAMES")
+                        .help("Number of frames (default=all)")
+                        .required(false)
+                        .takes_value(true))  
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
@@ -378,6 +385,25 @@ fn main() {
         false => 100
     };
 
+
+    let number_of_frames = match matches.is_present(constants::param::PARAM_NUMBER_OF_FRAMES) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_NUMBER_OF_FRAMES).unwrap();
+            if util::string_is_valid_usize(&s) {
+                let p = s.parse::<usize>().unwrap();
+                if p <= 0 {
+                    panic!("Error: Frame limit number cannot be zero or below");
+                }
+                p
+            } else {
+                eprintln!("Error: Invalid number specified for frame limit number");
+                process::exit(1);
+            }
+        },
+        false => 10000000
+    };
+    
+
     let pct_of_max = match matches.is_present(constants::param::PARAM_PCTOFMAX) {
         true => {
             let s = matches.value_of(constants::param::PARAM_PCTOFMAX).unwrap();
@@ -413,7 +439,8 @@ fn main() {
                                                     obs_longitude,
                                                     min_sigma,
                                                     max_sigma,
-                                                    pct_of_max).expect("Failed to create processing context");
+                                                    pct_of_max,
+                                                    number_of_frames).expect("Failed to create processing context");
     ha_processing.process_ser_files(&input_files, limit_top_pct);
     ha_processing.finalize(&output_file).expect("Failed to finalize buffer");
 }

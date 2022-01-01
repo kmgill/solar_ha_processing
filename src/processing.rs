@@ -22,6 +22,9 @@ use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use std::cmp::Ordering;
+use std::collections::HashMap;
+
+const UNKNOWN_ROTATION:f64 = -99999.0;
 
 #[derive(Debug, Clone)]
 struct FrameRecord {
@@ -85,7 +88,9 @@ pub struct HaProcessing {
     // This is a percentage (0 - 100) of the max possible value (65535 for unsigned 16 bit) that the maximum
     // data values will scaled to. This is to prevent undesirable pixel saturation when sharpening in 
     // applications such as RegiStax or ImPPG.
-    pub pct_of_max:f32
+    pub pct_of_max:f32,
+
+    pub number_of_frames: usize
 }
 
 impl HaProcessing {
@@ -121,7 +126,8 @@ impl HaProcessing {
                     obs_longitude:f32,
                     min_sigma:f32,
                     max_sigma:f32,
-                    pct_of_max:f32) -> error::Result<HaProcessing> {
+                    pct_of_max:f32,
+                    number_of_frames:usize) -> error::Result<HaProcessing> {
         let flat = match flat_path.len() {
             0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
             _ => {
@@ -196,7 +202,8 @@ impl HaProcessing {
                 obs_longitude:obs_longitude,
                 min_sigma:min_sigma,
                 max_sigma:max_sigma,
-                pct_of_max:pct_of_max
+                pct_of_max:pct_of_max,
+                number_of_frames:number_of_frames
             }
         )
     }
@@ -229,23 +236,33 @@ impl HaProcessing {
         HaProcessing::apply_dark_flat_on_buffer(&self.flat_field, &self.dark_field, &self.dark_flat_field, &buffer)
     }
 
+    pub fn get_rotation_for_time(&self, ts:&timestamp::TimeStamp) -> (f64, f64, f64) {
+        let (alt, az) = solar::position::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts);
+        let rotation = solar::parallactic_angle::from_lat_azimuth_altitude(self.obs_latitude as f64, az, alt);
 
-    pub fn process_frame(&self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp) -> imagebuffer::ImageBuffer {
+        (rotation, alt, az)
+    }
+
+    pub fn process_frame(&self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp, initial_rotation:f64) -> imagebuffer::ImageBuffer {
         let mut frame_buffer = self._apply_dark_flat_on_buffer(&buffer).unwrap();
 
         let com = frame_buffer.calc_center_of_mass_offset(self.obj_detect_threshold);
         frame_buffer = frame_buffer.shift(com.h, com.v).unwrap();
         
-        let (alt, az) = solar::position::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts);
-        let rotation = solar::parallactic_angle::from_lat_azimuth_altitude(self.obs_latitude as f64, az, alt);
-        
         if self.width > 0 && self.height > 0 {
             frame_buffer = frame_buffer.crop(self.width, self.height).unwrap();
         }
 
+        let (rotation, alt, az) = self.get_rotation_for_time(&ts);
+        
+        let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
+
+        let do_rotation = initial_rotation - rotation;
 
         vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
-        frame_buffer = imagerot::rotate(&frame_buffer, -1.0 * rotation.to_radians() as f32).expect("Error rotating image");
+        vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
+
+        frame_buffer = imagerot::rotate(&frame_buffer, -1.0 * do_rotation.to_radians() as f32).expect("Error rotating image");
 
         frame_buffer
     }
@@ -296,19 +313,35 @@ impl HaProcessing {
     //     self.frame_count += 1;
     // }
 
-    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>) {
+
+    fn get_rotation_of_single_frame(&self, frame_records:&Vec<FrameRecord>) -> f64 {
+        let frame_record = &frame_records[0];
+        let ser_file = ser::SerFile::load_ser(frame_record.source_file.as_str()).expect("Unable to load SER file");
+        let frame_buffer = ser_file.get_frame(frame_record.frame_id).unwrap();
+        let (rotation, _alt, _az) = self.get_rotation_for_time(&frame_buffer.timestamp);
+        rotation
+    }
+
+    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>, ser_files_map:&HashMap<String, ser::SerFile>) {
 
         let mut self_buffer = self.buffer.clone();
         let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
 
+        let initial_rotation = self.get_rotation_of_single_frame(&frame_records);
+
         frame_records.par_iter().for_each(|fr| {
 
-            let ser_file = ser::SerFile::load_ser(fr.source_file.as_str()).expect("Unable to load SER file");
-            let frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
-            let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp);
+            match ser_files_map.get(&fr.source_file) {
+                None => panic!("SER file does not exist in file map. Not good, Kevin. Not good."),
+                Some(ser_file) => {
+                    //let ser_file = ser::SerFile::load_ser(fr.source_file.as_str()).expect("Unable to load SER file");
+                    let frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
+                    let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp, initial_rotation);
 
-            // This is a bottleneck to parallelization. 
-            buffer_mtx.lock().unwrap().add_mut(&frame);
+                    // This is a bottleneck to parallelization. 
+                    buffer_mtx.lock().unwrap().add_mut(&frame);
+                }
+            };
 
         });
 
@@ -316,44 +349,40 @@ impl HaProcessing {
         self.frame_count += frame_records.len() as u32;
     }
 
-    fn determine_quality_in_ser(&self, ser_file_path:&str) -> Vec<FrameRecord>{
-        if ! path::file_exists(ser_file_path) {
-            panic!("File not found: {}", ser_file_path);
-        }
-    
-        let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
-        ser_file.validate();
-
+    fn determine_quality_in_ser(&self, ser_file:&ser::SerFile) -> Vec<FrameRecord>{
         let mut frame_records: Vec<FrameRecord> = vec!();
 
         let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
 
-        (0..ser_file.frame_count).into_par_iter().for_each(|i| {
+        let frame_count = if ser_file.frame_count > self.number_of_frames { self.number_of_frames } else { ser_file.frame_count };
+
+        (0..frame_count).into_par_iter().for_each(|i| {
             let frame_buffer = ser_file.get_frame(i).unwrap();
             let qual = quality::get_quality_estimation(&frame_buffer.buffer);
-            vprintln!("Quality value of frame {} is {}", ser_file_path, qual);
+            vprintln!("Quality value of frame {} is {}", ser_file.source_file, qual);
             if qual >= self.min_sigma && qual <= self.max_sigma {
                 let fr = FrameRecord{
-                    source_file:ser_file_path.to_string(),
+                    source_file:ser_file.source_file.to_string(),
                     frame_id:i,
                     quality_value:qual
                 };
                 frame_records_mtx.lock().unwrap().push(fr);
             } else {
-                vprintln!("Frame #{} in file {} falls out of sigma range ({}) and will be excluded", i, ser_file_path, qual);
+                vprintln!("Frame #{} in file {} falls out of sigma range ({}) and will be excluded", i, ser_file.source_file, qual);
             }
         });
 
         frame_records
     }
 
-    fn determine_quality_across_sers(&self, ser_files:&Vec<&str>) -> Vec<FrameRecord>{
+    fn determine_quality_across_sers(&self, ser_files_map:&HashMap<String, ser::SerFile>) -> Vec<FrameRecord>{
         let mut frame_records: Vec<FrameRecord> = vec!();
 
         let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
 
-        ser_files.par_iter().for_each(|sf| {
-            let mut list = self.determine_quality_in_ser(&sf);
+        ser_files_map.par_iter().for_each(|item| {
+            let (_pth, sf) = item;
+            let mut list = self.determine_quality_in_ser(sf);
             frame_records_mtx.lock().unwrap().append(&mut list);
         });
 
@@ -362,19 +391,38 @@ impl HaProcessing {
         frame_records
     }
 
+
+    pub fn create_ser_file_map(ser_files:&Vec<&str>) -> HashMap<String, ser::SerFile> {
+        let mut ser_files_map = HashMap::new();
+
+        for sf in ser_files.iter() {
+            if ! path::file_exists(sf) {
+                panic!("File not found: {}", sf);
+            }
+
+            let ser_file = ser::SerFile::load_ser(&sf).expect("Unable to load SER file");
+            ser_file.validate();
+            ser_files_map.insert(sf.to_string(), ser_file);
+        }
+
+        ser_files_map
+    }
+
     pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8) {
 
         if limit_top_pct > 100 {
             panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
         }
 
-        let frame_records: Vec<FrameRecord> = self.determine_quality_across_sers(&ser_files);
+        let ser_files_map = HaProcessing::create_ser_file_map(ser_files);
+
+        let frame_records: Vec<FrameRecord> = self.determine_quality_across_sers(&ser_files_map);
 
         let max_frame = ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
 
         let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
 
-        self.process_frame_records(&limited_frame_records);
+        self.process_frame_records(&limited_frame_records, &ser_files_map);
 
         vprintln!("Total frames considered: {}", frame_records.len());
         vprintln!("Limited to top {}% of frames", limit_top_pct);
