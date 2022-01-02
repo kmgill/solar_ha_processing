@@ -1,0 +1,14 @@
+
+threshold = 40960
+sigma_min = 1.4
+sigma_max = 5.0
+top_percent = 80
+latitude = 34.05
+longitude = -118.4955
+frame_limit = 2500
+crop_width = 1200
+crop_height = 1200
+stretch_max = 100
+red_scalar = 1.0
+green_scalar = 1.0
+blue_scalar = 1.0

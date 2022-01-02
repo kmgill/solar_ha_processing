@@ -1,6 +1,11 @@
 
 static mut IS_VERBOSE: bool = false;
 
+use chrono::prelude::*;
+
+pub fn print_datetime() {
+    print!("{}: ",  Local::now().format("%Y-%m-%d %H:%M:%S%.6f").to_string());
+}
 
 pub fn set_verbose(v:bool) {
     unsafe {
@@ -19,6 +24,7 @@ macro_rules! vprintln {
     () => (if crate::print::is_verbose() { std::print!("\n"); });
     ($($arg:tt)*) => {
         if crate::print::is_verbose() { 
+            crate::print::print_datetime();
             println!($($arg)*);
         }
     };
@@ -29,6 +35,7 @@ macro_rules! veprintln {
     () => (if crate::print::is_verbose() { std::print!("\n"); });
     ($($arg:tt)*) => {
         if crate::print::is_verbose() { 
+            crate::print::print_datetime();
             eprintln!($($arg)*);
         }
     };
