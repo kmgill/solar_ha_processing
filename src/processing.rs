@@ -262,7 +262,7 @@ impl HaProcessing {
         vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
         vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
 
-        frame_buffer = imagerot::rotate(&frame_buffer, -1.0 * do_rotation.to_radians() as f32).expect("Error rotating image");
+        frame_buffer = imagerot::rotate(&frame_buffer, do_rotation.to_radians() as f32).expect("Error rotating image");
 
         frame_buffer
     }
