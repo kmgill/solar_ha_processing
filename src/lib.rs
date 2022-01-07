@@ -20,3 +20,4 @@ pub mod timestamp;
 pub mod processing;
 pub mod quality;
 pub mod params;
+pub mod fpmap;
