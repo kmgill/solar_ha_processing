@@ -643,7 +643,7 @@ dependencies = [
 
 [[package]]
 name = "solar_ha_processing"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "astro",
  "chrono",

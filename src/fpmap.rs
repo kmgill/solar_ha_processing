@@ -11,7 +11,7 @@ use crate::{
 use std::collections::HashMap;
 
 /** file pointer map */
-struct FpMap {
+pub struct FpMap {
     map: HashMap<String, ser::SerFile>
 }
 
@@ -53,6 +53,11 @@ impl FpMap {
     }
 
     pub fn open(&mut self, path:&String) -> error::Result<&str> {
+
+        if self.contains(path) {
+            return Err("File already open");
+        }
+
         vprintln!("Opening file in fpmap: {}", path);
 
         if ! path::file_exists(path) {

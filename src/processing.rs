@@ -8,7 +8,8 @@ use crate::{
     imagerot,
     timestamp,
     quality,
-    ok
+    ok,
+    fpmap
 };
 
 use sciimg::{
@@ -22,7 +23,6 @@ use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
 
 const UNKNOWN_ROTATION:f64 = -99999.0;
 
@@ -90,7 +90,8 @@ pub struct HaProcessing {
     // applications such as RegiStax or ImPPG.
     pub pct_of_max:f32,
 
-    pub number_of_frames: usize
+    pub number_of_frames: usize,
+    pub file_map: fpmap::FpMap
 }
 
 impl HaProcessing {
@@ -203,7 +204,8 @@ impl HaProcessing {
                 min_sigma:min_sigma,
                 max_sigma:max_sigma,
                 pct_of_max:pct_of_max,
-                number_of_frames:number_of_frames
+                number_of_frames:number_of_frames,
+                file_map:fpmap::FpMap::new()
             }
         )
     }
@@ -322,7 +324,7 @@ impl HaProcessing {
         rotation
     }
 
-    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>, ser_files_map:&HashMap<String, ser::SerFile>) {
+    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>) {
 
         let mut self_buffer = self.buffer.clone();
         let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
@@ -331,10 +333,13 @@ impl HaProcessing {
 
         frame_records.par_iter().for_each(|fr| {
 
-            match ser_files_map.get(&fr.source_file) {
+            // Using get_dont_open so we can keep it as unmutable. Should we want to go to lazy loading of
+            // the ser files (though they'd already be loaded in the quality estimation stage), we'd
+            // have to find a way to use just get()
+            match self.file_map.get_dont_open(&fr.source_file) {
                 None => panic!("SER file does not exist in file map. Not good, Kevin. Not good."),
                 Some(ser_file) => {
-                    //let ser_file = ser::SerFile::load_ser(fr.source_file.as_str()).expect("Unable to load SER file");
+                    
                     let frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
                     let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp, initial_rotation);
 
@@ -375,12 +380,12 @@ impl HaProcessing {
         frame_records
     }
 
-    fn determine_quality_across_sers(&self, ser_files_map:&HashMap<String, ser::SerFile>) -> Vec<FrameRecord>{
+    fn determine_quality_across_sers(&self) -> Vec<FrameRecord>{
         let mut frame_records: Vec<FrameRecord> = vec!();
 
         let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
 
-        ser_files_map.par_iter().for_each(|item| {
+        self.file_map.get_map().par_iter().for_each(|item| {
             let (_pth, sf) = item;
             let mut list = self.determine_quality_in_ser(sf);
             frame_records_mtx.lock().unwrap().append(&mut list);
@@ -392,20 +397,16 @@ impl HaProcessing {
     }
 
 
-    pub fn create_ser_file_map(ser_files:&Vec<&str>) -> HashMap<String, ser::SerFile> {
-        let mut ser_files_map = HashMap::new();
+    pub fn init_ser_file_map(&mut self, ser_files:&Vec<&str>) {
 
         for sf in ser_files.iter() {
             if ! path::file_exists(sf) {
                 panic!("File not found: {}", sf);
             }
 
-            let ser_file = ser::SerFile::load_ser(&sf).expect("Unable to load SER file");
-            ser_file.validate();
-            ser_files_map.insert(sf.to_string(), ser_file);
+            self.file_map.open(&sf.to_string()).unwrap();
         }
 
-        ser_files_map
     }
 
     pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8) {
@@ -414,15 +415,17 @@ impl HaProcessing {
             panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
         }
 
-        let ser_files_map = HaProcessing::create_ser_file_map(ser_files);
+        // We actually have the option to do lazy loading here. That'd be fine, but for now we'll open them up
+        // beforehard. 
+        self.init_ser_file_map(ser_files);
 
-        let frame_records: Vec<FrameRecord> = self.determine_quality_across_sers(&ser_files_map);
+        let frame_records: Vec<FrameRecord> = self.determine_quality_across_sers();
 
         let max_frame = ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
 
         let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
 
-        self.process_frame_records(&limited_frame_records, &ser_files_map);
+        self.process_frame_records(&limited_frame_records);
 
         vprintln!("Total frames considered: {}", frame_records.len());
         vprintln!("Limited to top {}% of frames", limit_top_pct);
