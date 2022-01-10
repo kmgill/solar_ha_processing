@@ -5,7 +5,8 @@ use solar_ha_processing::{
     print,
     path,
     util,
-    processing
+    processing,
+    enums::Target
 };
 
 #[macro_use]
@@ -154,6 +155,13 @@ fn main() {
                         .help("Number of frames (default=all)")
                         .required(false)
                         .takes_value(true))  
+                    .arg(Arg::with_name(constants::param::PARAM_TARGET)
+                        .short(constants::param::PARAM_TARGET_SHORT)
+                        .long(constants::param::PARAM_TARGET)
+                        .value_name("PARAM_TARGET")
+                        .help("Target (Moon, Sun)")
+                        .required(false)
+                        .takes_value(true))  
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
@@ -271,6 +279,19 @@ fn main() {
             f
         },
         false => String::from("")
+    };
+
+    let target = match matches.is_present(constants::param::PARAM_TARGET) {
+        true => {
+            match Target::from(matches.value_of(constants::param::PARAM_TARGET).unwrap()) {
+                Some(t) => t,
+                None => {
+                    eprintln!("Error: Unrecognized target value: {}", matches.value_of(constants::param::PARAM_TARGET).unwrap());
+                    process::exit(1);
+                }
+            }
+        },
+        false => Target::Sun
     };
 
     let mut red_scalar = constants::DEFAULT_RED_WEIGHT;
@@ -440,7 +461,8 @@ fn main() {
                                                     min_sigma,
                                                     max_sigma,
                                                     pct_of_max,
-                                                    number_of_frames).expect("Failed to create processing context");
+                                                    number_of_frames,
+                                                    target).expect("Failed to create processing context");
     ha_processing.process_ser_files(&input_files, limit_top_pct);
     ha_processing.finalize(&output_file).expect("Failed to finalize buffer");
 }

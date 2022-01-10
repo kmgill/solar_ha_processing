@@ -15,3 +15,5 @@ pub mod processing;
 pub mod quality;
 pub mod params;
 pub mod fpmap;
+pub mod parallacticangle;
+pub mod lunar;

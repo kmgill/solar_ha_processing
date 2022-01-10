@@ -153,6 +153,7 @@ process_ha -v -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -S $CHROME_SIGMA_MAX \
                 -s $CHROME_SIGMA_MIN \
                 -n $FRAME_LIMIT \
+                -T sun \
                 -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
                 #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
 
@@ -173,6 +174,7 @@ if [ $HAS_PROM -eq 1 ]; then
                     -S $PROM_SIGMA_MAX \
                     -s $PROM_SIGMA_MIN \
                     -n $FRAME_LIMIT \
+                    -T sun \
                     -P $PROM_MAX_SCALE 2>&1 | tee $DATAROOT/prominance_${DATA_TS}${VERSION}.log
                     #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 
@@ -196,6 +198,7 @@ if [ $HAS_PHOTO -eq 1 ]; then
                 -q $PHOTO_TOP_PCT \
                 -S $PHOTO_SIGMA_MAX \
                 -s $PHOTO_SIGMA_MIN \
+                -T sun \
                 -P $PHOTO_MAX_SCALE 2>&1 | tee $DATAROOT/photosphere_${DATA_TS}${VERSION}.log
                 #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 fi

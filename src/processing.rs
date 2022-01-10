@@ -5,10 +5,13 @@ use crate::{
     vprintln,
     mean,
     solar,
+    lunar,
     timestamp,
     quality,
     ok,
-    fpmap
+    fpmap,
+    parallacticangle,
+    enums::Target
 };
 
 use sciimg::{
@@ -77,6 +80,7 @@ pub struct HaProcessing {
     pub obs_latitude:f32,
     pub obs_longitude:f32,
     pub min_sigma:f32,
+    pub target:Target,
 
     // Glitch frames tend to score a very high (outlier) sigma on the quality std-dev test. By specifying
     // a maximum sigma, we can exclude those frames that would otherwise be included in the
@@ -126,7 +130,8 @@ impl HaProcessing {
                     min_sigma:f32,
                     max_sigma:f32,
                     pct_of_max:f32,
-                    number_of_frames:usize) -> error::Result<HaProcessing> {
+                    number_of_frames:usize,
+                    target:Target) -> error::Result<HaProcessing> {
         let flat = match flat_path.len() {
             0 => rgbimage::RgbImage::new_empty().unwrap(),
             _ => {
@@ -203,6 +208,7 @@ impl HaProcessing {
                 max_sigma:max_sigma,
                 pct_of_max:pct_of_max,
                 number_of_frames:number_of_frames,
+                target:target,
                 file_map:fpmap::FpMap::new()
             }
         )
@@ -210,8 +216,19 @@ impl HaProcessing {
 
 
     pub fn get_rotation_for_time(&self, ts:&timestamp::TimeStamp) -> (f64, f64, f64) {
-        let (alt, az) = solar::position::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts);
-        let rotation = solar::parallactic_angle::from_lat_azimuth_altitude(self.obs_latitude as f64, az, alt);
+
+        let (alt, az) = match self.target {
+            Target::Moon => {
+                vprintln!("Calculating position for Moon");
+                lunar::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts)
+            },
+            Target::Sun => {
+                vprintln!("Calculating position for Sun");
+                solar::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts)
+            }
+        };
+
+        let rotation = parallacticangle::from_lat_azimuth_altitude(self.obs_latitude as f64, az, alt);
 
         (rotation, alt, az)
     }

@@ -105,4 +105,7 @@ pub mod param {
 
     pub const PARAM_SCALE_FACTOR : &str = "factor";
     pub const PARAM_SCALE_FACTOR_SHORT : &str = "f";
+
+    pub const PARAM_TARGET : &str = "target";
+    pub const PARAM_TARGET_SHORT : &str = "T";
 }

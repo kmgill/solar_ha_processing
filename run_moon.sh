@@ -22,14 +22,14 @@ LOC_LONGITUDE=0.0
 
 MOON_MAX_SCALE=95
 
-CROP_WIDTH=2600
-CROP_HEIGHT=2600
+CROP_WIDTH=2800
+CROP_HEIGHT=2800
 
 check_file=`ls -1 $DATAROOT/$MOON_ROOT/*/*ser | head -n 1`
 BIT_DEPTH=`ser_info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
 
-FRAME_LIMIT=200
+FRAME_LIMIT=2000
 
 DATA_TS=`ls $DATAROOT/$MOON_ROOT/ | tail -n 1`
 
@@ -61,4 +61,5 @@ process_ha -v -i $DATAROOT/$MOON_ROOT/*/Moon*ser \
                 -S $MOON_SIGMA_MAX \
                 -s $MOON_SIGMA_MIN \
                 -n $FRAME_LIMIT \
+                -T moon \
                 -P $MOON_MAX_SCALE 2>&1 | tee $DATAROOT/moon_${DATA_TS}${VERSION}.log

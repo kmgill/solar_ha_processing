@@ -1,9 +1,10 @@
 
 
-use solar_ha_processing::solar::{
-    util, 
-    parallactic_angle
+use solar_ha_processing::{
+    solar::util,
+    parallacticangle
 };
+
 
 // https://stackoverflow.com/questions/30856285/assert-eq-with-floating-point-numbers-and-delta
 macro_rules! assert_delta {
@@ -63,8 +64,8 @@ fn test_parallactic_angle_4() {
 fn do_test_parallactic_angle_methods(lat:f64, dec:f64, alt:f64, azi:f64, expected:f64) {
     let zenith = 90.0 - alt;
 
-    assert_delta!(parallactic_angle::from_az_dec_and_lat(azi, dec, lat), expected, 0.01);
-    assert_delta!(parallactic_angle::from_lat_dec_and_zenith(lat, dec, zenith, azi), expected, 0.01);
-    assert_delta!(parallactic_angle::from_lat_zenith_azimuth_dec(lat, zenith, azi, dec), expected, 0.01);
-    assert_delta!(parallactic_angle::from_lat_azimuth_altitude(lat, azi, alt), expected, 0.01);
+    assert_delta!(parallacticangle::from_az_dec_and_lat(azi, dec, lat), expected, 0.01);
+    assert_delta!(parallacticangle::from_lat_dec_and_zenith(lat, dec, zenith, azi), expected, 0.01);
+    assert_delta!(parallacticangle::from_lat_zenith_azimuth_dec(lat, zenith, azi, dec), expected, 0.01);
+    assert_delta!(parallacticangle::from_lat_azimuth_altitude(lat, azi, alt), expected, 0.01);
 }

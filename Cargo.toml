@@ -75,3 +75,4 @@ rayon = "1.5.1"
 sciimg =  "0.1.7"
 toml = "0.5.8"
 serde = { version = "1.0.125", features = ["derive"] }
+astral = { path = "../astral" }
