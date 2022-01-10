@@ -5,7 +5,6 @@ use crate::{
     vprintln,
     mean,
     solar,
-    imagerot,
     timestamp,
     quality,
     ok,
@@ -13,7 +12,6 @@ use crate::{
 };
 
 use sciimg::{
-    imagebuffer,
     error,
     enums::ImageMode,
     rgbimage
@@ -64,13 +62,13 @@ impl Eq for FrameRecord {
 
 
 pub struct HaProcessing {
-    pub flat_field:imagebuffer::ImageBuffer,
-    pub dark_field:imagebuffer::ImageBuffer,
-    pub dark_flat_field:imagebuffer::ImageBuffer,
-    pub mask:imagebuffer::ImageBuffer,
+    pub flat_field:rgbimage::RgbImage,
+    pub dark_field:rgbimage::RgbImage,
+    pub dark_flat_field:rgbimage::RgbImage,
+    pub mask:rgbimage::RgbImage,
     pub width:usize,
     pub height:usize,
-    pub buffer:imagebuffer::ImageBuffer,
+    pub buffer:rgbimage::RgbImage,
     pub frame_count:u32,
     pub obj_detect_threshold:f32,
     pub red_scalar:f32,
@@ -103,7 +101,7 @@ impl HaProcessing {
         }
     }
 
-    pub fn create_mean_from_ser(ser_file_path:&str) -> error::Result<imagebuffer::ImageBuffer> {
+    pub fn create_mean_from_ser(ser_file_path:&str) -> error::Result<rgbimage::RgbImage> {
         if ! HaProcessing::is_ser_file(ser_file_path) {
             Err("Not a SER file")
         } else {
@@ -130,7 +128,7 @@ impl HaProcessing {
                     pct_of_max:f32,
                     number_of_frames:usize) -> error::Result<HaProcessing> {
         let flat = match flat_path.len() {
-            0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
+            0 => rgbimage::RgbImage::new_empty().unwrap(),
             _ => {
                 if ! path::file_exists(flat_path) {
                     panic!("File not found: {}", flat_path);
@@ -139,14 +137,14 @@ impl HaProcessing {
                 if HaProcessing::is_ser_file(flat_path) {
                     HaProcessing::create_mean_from_ser(flat_path).unwrap()
                 } else {
-                    imagebuffer::ImageBuffer::from_file(flat_path).unwrap()
+                    rgbimage::RgbImage::open_str(flat_path).unwrap()
                 }
                 
             }
         };
     
         let dark = match dark_path.len() {
-            0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
+            0 => rgbimage::RgbImage::new_empty().unwrap(),
             _ => {
                 if ! path::file_exists(dark_path) {
                     panic!("File not found: {}", dark_path);
@@ -155,13 +153,13 @@ impl HaProcessing {
                 if HaProcessing::is_ser_file(dark_path) {
                     HaProcessing::create_mean_from_ser(dark_path).unwrap()
                 } else {
-                    imagebuffer::ImageBuffer::from_file(dark_path).unwrap()
+                    rgbimage::RgbImage::open_str(dark_path).unwrap()
                 }
             }
         };
 
         let darkflat = match dark_flat_path.len() {
-            0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
+            0 => rgbimage::RgbImage::new_empty().unwrap(),
             _ => {
                 if ! path::file_exists(dark_flat_path) {
                     panic!("File not found: {}", dark_flat_path);
@@ -170,18 +168,18 @@ impl HaProcessing {
                 if HaProcessing::is_ser_file(dark_flat_path) {
                     HaProcessing::create_mean_from_ser(dark_flat_path).unwrap()
                 } else {
-                    imagebuffer::ImageBuffer::from_file(dark_flat_path).unwrap()
+                    rgbimage::RgbImage::open_str(dark_flat_path).unwrap()
                 }
             }
         };
 
         let mask = match mask_file.len() {
-            0 => imagebuffer::ImageBuffer::new_empty().unwrap(),
+            0 => rgbimage::RgbImage::new_empty().unwrap(),
             _ => {
                 if ! path::file_exists(mask_file) {
                     panic!("File not found: {}", mask_file);
                 }
-                imagebuffer::ImageBuffer::from_file(mask_file).unwrap()
+                rgbimage::RgbImage::open_str(mask_file).unwrap()
             }
         };
 
@@ -193,7 +191,7 @@ impl HaProcessing {
                 mask:mask,
                 width:crop_width,
                 height:crop_height,
-                buffer:imagebuffer::ImageBuffer::new_as_mode(crop_width, crop_height, ImageMode::U8BIT).unwrap(),
+                buffer:rgbimage::RgbImage::new_with_bands(crop_width, crop_height, 3, ImageMode::U8BIT).unwrap(),
                 frame_count:0,
                 obj_detect_threshold:obj_detect_threshold,
                 red_scalar:red_scalar,
@@ -210,33 +208,6 @@ impl HaProcessing {
         )
     }
 
-    pub fn apply_dark_flat_on_buffer(flat_field:&imagebuffer::ImageBuffer, dark_field:&imagebuffer::ImageBuffer, dark_flat_field:&imagebuffer::ImageBuffer, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
-
-        let mut frame_buffer = buffer.clone();
-        if ! flat_field.is_empty() && ! dark_field.is_empty()  && ! dark_flat_field.is_empty() {
-            let flat_minus_darkflat = flat_field.subtract(&dark_flat_field).unwrap();
-            let darkflat = flat_minus_darkflat.subtract(&dark_field).unwrap();
-            let mean_flat = darkflat.mean();
-            let frame_minus_dark = frame_buffer.subtract(&dark_field).unwrap();
-            frame_buffer = frame_minus_dark.scale(mean_flat).unwrap().divide(&flat_minus_darkflat).unwrap();
-        } else  if ! flat_field.is_empty() && ! dark_field.is_empty() {
-            let darkflat = flat_field.subtract(&dark_field).unwrap();
-            let mean_flat = darkflat.mean();
-            let frame_minus_dark = frame_buffer.subtract(&dark_field).unwrap();
-            frame_buffer = frame_minus_dark.scale(mean_flat).unwrap().divide(&flat_field).unwrap();
-        } else if ! flat_field.is_empty() && dark_field.is_empty() {
-            let mean_flat = flat_field.mean();
-            frame_buffer = frame_buffer.scale(mean_flat).unwrap().divide(&flat_field).unwrap();
-        } else if flat_field.is_empty() && ! dark_field.is_empty() {
-            frame_buffer = frame_buffer.subtract(&dark_field).unwrap();
-        }
-
-        Ok(frame_buffer)
-    }
-
-    fn _apply_dark_flat_on_buffer(&self, buffer:&imagebuffer::ImageBuffer) -> error::Result<imagebuffer::ImageBuffer> {
-        HaProcessing::apply_dark_flat_on_buffer(&self.flat_field, &self.dark_field, &self.dark_flat_field, &buffer)
-    }
 
     pub fn get_rotation_for_time(&self, ts:&timestamp::TimeStamp) -> (f64, f64, f64) {
         let (alt, az) = solar::position::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts);
@@ -245,14 +216,19 @@ impl HaProcessing {
         (rotation, alt, az)
     }
 
-    pub fn process_frame(&self, buffer:&imagebuffer::ImageBuffer, ts:&timestamp::TimeStamp, initial_rotation:f64) -> imagebuffer::ImageBuffer {
-        let mut frame_buffer = self._apply_dark_flat_on_buffer(&buffer).unwrap();
+    pub fn process_frame(&self, buffer:&mut rgbimage::RgbImage, ts:&timestamp::TimeStamp, initial_rotation:f64) {
 
-        let com = frame_buffer.calc_center_of_mass_offset(self.obj_detect_threshold);
-        frame_buffer = frame_buffer.shift(com.h, com.v).unwrap();
+        buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
+
+        let com = buffer.calc_center_of_mass_offset(self.obj_detect_threshold, 0);
+        buffer.shift(com.h, com.v);
         
         if self.width > 0 && self.height > 0 {
-            frame_buffer = frame_buffer.crop(self.width, self.height).unwrap();
+
+            let x = (buffer.width - self.width) / 2;
+            let y = (buffer.height - self.height) / 2;
+
+            buffer.crop(x, y, self.width, self.height);
         }
 
         let (rotation, alt, az) = self.get_rotation_for_time(&ts);
@@ -264,33 +240,30 @@ impl HaProcessing {
         vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
         vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
 
-        frame_buffer = imagerot::rotate(&frame_buffer, do_rotation.to_radians() as f32).expect("Error rotating image");
-
-        frame_buffer
+        buffer.rotate(do_rotation.to_radians() as f32);
     }
 
-    pub fn finalize(&self, out_path:&str) -> error::Result<&str> {
+    pub fn finalize(&mut self, out_path:&str) -> error::Result<&str> {
 
         if self.frame_count > 0 {
-            let mean_buffer = self.buffer.scale(1.0 / self.frame_count as f32).unwrap();
-            let stackmm = mean_buffer.get_min_max().unwrap();
-            vprintln!("    Stack Min/Max : {}, {} ({} images)", stackmm.min, stackmm.max, self.frame_count);
+            for band in 0..self.buffer.num_bands() {
+                self.buffer.apply_weight_on_band(1.0 / self.frame_count as f32, band);
+            }
 
+            let (stackmin, stackmax) = self.buffer.get_min_max_all_channel();
+            vprintln!("    Stack Min/Max : {}, {} ({} images)", stackmin, stackmax, self.frame_count);
 
-            // if ! self.mask.is_empty() {
-            //     rgb.apply_mask(&self.mask);
-            //}
+            if ! self.mask.is_empty() {
+                self.buffer.apply_mask(&self.mask.get_band(0));
+            }
 
-            let buffer2 = match self.mask.is_empty() {
-                false => {
-                    let mm = self.mask.get_min_max().unwrap();
-                    let sc = self.mask.scale(1.0 / mm.max).unwrap();
-                    mean_buffer.multiply(&sc).unwrap()
+            let mut rgb = match self.buffer.num_bands() {
+                1 => {
+                    rgbimage::RgbImage::new_from_buffers_rgb(&self.buffer.get_band(0), &self.buffer.get_band(0), &self.buffer.get_band(0), self.buffer.get_mode()).unwrap()
                 },
-                true => mean_buffer
+                3 => self.buffer.clone(),
+                _ => panic!("Unsupported number of bands")
             };
-
-            let mut rgb = rgbimage::RgbImage::new_from_buffers_rgb(&buffer2, &buffer2, &buffer2, ImageMode::U8BIT).unwrap();
             rgb.apply_weight_on_band(self.red_scalar, 0);
             rgb.apply_weight_on_band(self.green_scalar, 1);
             rgb.apply_weight_on_band(self.blue_scalar, 2);
@@ -309,11 +282,6 @@ impl HaProcessing {
         }
 
     }
-
-    // fn add_frame(&mut self, buffer:&imagebuffer::ImageBuffer) {
-    //     self.buffer = self.buffer.add(&buffer).unwrap();
-    //     self.frame_count += 1;
-    // }
 
 
     fn get_rotation_of_single_frame(&self, frame_records:&Vec<FrameRecord>) -> f64 {
@@ -340,11 +308,12 @@ impl HaProcessing {
                 None => panic!("SER file does not exist in file map. Not good, Kevin. Not good."),
                 Some(ser_file) => {
                     
-                    let frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
-                    let frame = self.process_frame(&frame_buffer.buffer, &frame_buffer.timestamp, initial_rotation);
-
+                    let mut frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
+                    self.process_frame(&mut frame_buffer.buffer, &frame_buffer.timestamp, initial_rotation);
+                    
+                    //self.buffer.add(&frame_buffer.buffer);
                     // This is a bottleneck to parallelization. 
-                    buffer_mtx.lock().unwrap().add_mut(&frame);
+                    buffer_mtx.lock().unwrap().add(&frame_buffer.buffer);
                 }
             };
 

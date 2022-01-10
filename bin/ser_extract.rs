@@ -8,13 +8,11 @@ use solar_ha_processing::{
     vprintln,
     quality,
     util,
-    processing,
-    
+    processing
 };
 
 use sciimg::{
-    imagebuffer,
-    enums::ImageMode
+    rgbimage
 };
 
 use std::fs;
@@ -140,7 +138,7 @@ fn main() {
             processing::HaProcessing::create_mean_from_ser(&f).unwrap()
 
         },
-        false => imagebuffer::ImageBuffer::new_empty().unwrap()
+        false => rgbimage::RgbImage::new_empty().unwrap()
     };
 
     let dark_frame = match matches.is_present(constants::param::PARAM_DARK_FRAME) {
@@ -151,7 +149,7 @@ fn main() {
             }
             processing::HaProcessing::create_mean_from_ser(&f).unwrap()
         },
-        false => imagebuffer::ImageBuffer::new_empty().unwrap()
+        false => rgbimage::RgbImage::new_empty().unwrap()
     };
 
     let dark_flat_frame = match matches.is_present(constants::param::PARAM_DARK_FLAT_FRAME) {
@@ -162,7 +160,7 @@ fn main() {
             }
             processing::HaProcessing::create_mean_from_ser(&f).unwrap()
         },
-        false => imagebuffer::ImageBuffer::new_empty().unwrap()
+        false => rgbimage::RgbImage::new_empty().unwrap()
     };
 
     let input_files: Vec<&str> = matches.values_of(constants::param::PARAM_INPUTS).unwrap().collect();
@@ -192,19 +190,12 @@ fn main() {
         ser_file.validate();
 
         (0..ser_file.frame_count).into_par_iter().for_each(|i| {
-            let frame = ser_file.get_frame(i).expect("Failed extracting frame");
+            let mut frame = ser_file.get_frame(i).expect("Failed extracting frame");
 
-            let calibrated_frame = match !dark_frame.is_empty() || !flat_frame.is_empty() {
-                true => {
-                    vprintln!("Applying frame calibration");
-                    processing::HaProcessing::apply_dark_flat_on_buffer(&flat_frame, &dark_frame, &dark_flat_frame,  &frame.buffer).expect("Error calibrating frame")
-                },
-                false => {
-                    frame.buffer
-                }
-            };
 
-            let sd = quality::get_quality_estimation(&calibrated_frame);
+            frame.buffer.calibrate(&flat_frame, &dark_frame, &dark_flat_frame);
+
+            let sd = quality::get_quality_estimation(&frame.buffer);
 
             if sd < min_sigma || sd > max_sigma {
                 vprintln!("Frame #{} is outside of sigma range ({})", i, sd);
@@ -229,8 +220,7 @@ fn main() {
                 process::exit(3);
             }
 
-
-            calibrated_frame.save(&frame_output_path, ImageMode::U16BIT);
+            frame.buffer.save(&frame_output_path);
 
         });
     }

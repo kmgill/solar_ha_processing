@@ -10,7 +10,9 @@ use crate::{
 use sciimg::{
     imagebuffer,
     error,
-    enums::ImageMode
+    enums::ImageMode,
+    rgbimage,
+    debayer
 };
 
 use std::convert::TryInto;
@@ -80,7 +82,7 @@ impl Endian {
 // Frames block is frame_size * num_images
 // Frames block starts off at byte 178
 pub struct SerFrame {
-    pub buffer:imagebuffer::ImageBuffer,
+    pub buffer:rgbimage::RgbImage,
     pub timestamp: timestamp::TimeStamp
 }
 
@@ -133,9 +135,30 @@ fn read_i32(map:&Mmap, start:usize) -> i32 {
 }
 
 impl SerFrame {
-    pub fn new(buffer:imagebuffer::ImageBuffer, timestamp:u64) -> SerFrame {
+    pub fn new(single_band_buffer:&imagebuffer::ImageBuffer, timestamp:u64) -> SerFrame {
+
+        let mut buffer = rgbimage::RgbImage::new_with_bands(single_band_buffer.width, single_band_buffer.height, 1, single_band_buffer.mode).unwrap();
+        buffer.add_to_each(&single_band_buffer);
+
         SerFrame {
             buffer:buffer,
+            timestamp:timestamp::TimeStamp::from_u64(timestamp)
+        }
+    }
+
+    pub fn new_three_channel(r:&imagebuffer::ImageBuffer, g:&imagebuffer::ImageBuffer, b:&imagebuffer::ImageBuffer, timestamp:u64) -> SerFrame {
+
+        let buffer = rgbimage::RgbImage::new_from_buffers_rgb(&r, &g, &b, r.mode).unwrap();
+
+        SerFrame {
+            buffer:buffer,
+            timestamp:timestamp::TimeStamp::from_u64(timestamp)
+        }
+    }
+
+    pub fn new_rgb(rgb:rgbimage::RgbImage, timestamp:u64) -> SerFrame {
+        SerFrame {
+            buffer:rgb,
             timestamp:timestamp::TimeStamp::from_u64(timestamp)
         }
     }
@@ -288,19 +311,37 @@ impl SerFile {
             }
         }
         
-        Ok(
-            SerFrame::new(
-                imagebuffer::ImageBuffer::from_vec_as_mode(values, 
-                    self.image_width, 
-                    self.image_height,
-                    match self.pixel_depth {
-                        8 => ImageMode::U8BIT,
-                        _ => ImageMode::U16BIT
-                    }
-                ).expect("Failed to allocate image buffer"),
-                self.get_frame_timestamp(frame_num).expect("Failed to extract frame timestamp")
-            )
-        )
+        let frame_buffer = imagebuffer::ImageBuffer::from_vec_as_mode(values, 
+            self.image_width, 
+            self.image_height,
+            match self.pixel_depth {
+                8 => ImageMode::U8BIT,
+                _ => ImageMode::U16BIT
+            }
+        ).expect("Failed to allocate image buffer");
+
+        match self.color_id {
+            ColorFormatId::Mono => {
+                Ok(
+                    SerFrame::new(
+                        &frame_buffer,
+                        self.get_frame_timestamp(frame_num).expect("Failed to extract frame timestamp")
+                    )
+                )
+            },
+            ColorFormatId::BayerRggb => {
+                let debayered = debayer::debayer(&frame_buffer).unwrap();
+                Ok(
+                    SerFrame::new_rgb(
+                        debayered,
+                        self.get_frame_timestamp(frame_num).expect("Failed to extract frame timestamp")
+                    )
+                )
+            },
+            _ => {
+                panic!("Unsupported color mode: {:?}", self.color_id);
+            }
+        }
     }
 
 }

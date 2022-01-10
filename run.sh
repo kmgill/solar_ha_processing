@@ -31,7 +31,7 @@ CROP_HEIGHT=1200
 check_file=`ls -1 $DATAROOT/$CHROME_ROOT/*/*ser | head -n 1`
 BIT_DEPTH=`ser_info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
-FRAME_LIMIT=2500
+FRAME_LIMIT=2000
 
 if [ $BIT_DEPTH -eq 8 ]; then
     # 8 Bit
@@ -52,7 +52,7 @@ if [ $BIT_DEPTH -eq 8 ]; then
 elif [ $BIT_DEPTH -eq 16 ]; then
     # 16 Bit
     CHROME_THRESH=20560
-    CHROME_SIGMA_MIN=2.6
+    CHROME_SIGMA_MIN=2.2
     CHROME_SIGMA_MAX=5.0
     CHROME_TOP_PCT=80
 

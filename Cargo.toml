@@ -1,6 +1,6 @@
 [package]
 name = "solar_ha_processing"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Kevin M. Gill <apoapsys@gmail.com>"]
 edition = "2021"
 description = "A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging"
@@ -72,6 +72,6 @@ sun = "0.2.0"
 chrono = "0.4.19"
 fastblur = "0.1.1"
 rayon = "1.5.1"
-sciimg = "0.1.4"
+sciimg =  "0.1.7"
 toml = "0.5.8"
 serde = { version = "1.0.125", features = ["derive"] }

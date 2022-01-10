@@ -2,7 +2,8 @@
 use sciimg::{
     stats,
     imagebuffer,
-    enums::ImageMode
+    enums::ImageMode,
+    rgbimage
 };
 
 use fastblur::gaussian_blur;
@@ -49,13 +50,14 @@ fn apply_blur(image:&imagebuffer::ImageBuffer, amount:f32) -> imagebuffer::Image
 
 // A very simple image sharpness quantifier that computes the standard deviation of the difference between
 // an image and a blurred copy.
-pub fn get_quality_estimation(image:&imagebuffer::ImageBuffer) -> f32 {
+pub fn get_quality_estimation(image:&rgbimage::RgbImage) -> f32 {
 
-    let scaled = match image.mode {
-        ImageMode::U8BIT => image.clone(),
+    let band0 = image.get_band(0);
+    let scaled = match band0.mode {
+        ImageMode::U8BIT => band0.clone(),
         ImageMode::U16BIT => {
-            let mm = image.get_min_max().unwrap();
-            image.normalize_force_minmax(0.0, 255.0, mm.min, mm.max).unwrap()
+            let mm = band0.get_min_max().unwrap();
+            band0.normalize_force_minmax(0.0, 255.0, mm.min, mm.max).unwrap()
         },
         _ => panic!("Unexpected bit depth encountered!")
     };

@@ -6,10 +6,6 @@ use solar_ha_processing::{
     mean
 };
 
-use sciimg::{
-    enums::ImageMode
-};
-
 #[macro_use]
 extern crate clap;
 
@@ -64,5 +60,5 @@ fn main() {
     let mean_stack = mean::compute_mean(&input_files, true).expect("Failed to calculate mean");
 
     vprintln!("Saving stack buffer to {}", output_file_path);
-    mean_stack.save(output_file_path, ImageMode::U16BIT);
+    mean_stack.save(output_file_path);
 }

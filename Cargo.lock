@@ -594,9 +594,9 @@ dependencies = [
 
 [[package]]
 name = "sciimg"
-version = "0.1.4"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdcda37d0a1e5609e28151c3659f422568909feb2f7e6a7b2e5f5829e8f2e90a"
+checksum = "e853fa5cf10d55b65136f7dba443b9e9f42cb74f3cdac8246870736bbbdaa038"
 dependencies = [
  "chrono",
  "fastblur",
@@ -643,7 +643,7 @@ dependencies = [
 
 [[package]]
 name = "solar_ha_processing"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "astro",
  "chrono",
