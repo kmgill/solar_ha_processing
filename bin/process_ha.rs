@@ -165,6 +165,12 @@ fn main() {
                     .arg(Arg::with_name(constants::param::PARAM_VERBOSE)
                         .short(constants::param::PARAM_VERBOSE)
                         .help("Show verbose output"))
+                    .arg(Arg::with_name(constants::param::PARAM_NO_ROTATION)
+                        .long(constants::param::PARAM_NO_ROTATION)
+                        .value_name("PARAM_NO_ROTATION")
+                        .required(false)
+                        .takes_value(false)
+                        .help("Disable parallactic rotation"))
                     .get_matches();
 
     print::set_verbose(matches.is_present(constants::param::PARAM_VERBOSE));
@@ -446,6 +452,8 @@ fn main() {
         false => 100.0
     };
 
+    let enable_rotation = !matches.is_present(constants::param::PARAM_NO_ROTATION);
+
     let mut ha_processing = processing::HaProcessing::init_new(&flat_frame, 
                                                     &dark_frame, 
                                                     &dark_flat_frame,
@@ -463,6 +471,6 @@ fn main() {
                                                     pct_of_max,
                                                     number_of_frames,
                                                     target).expect("Failed to create processing context");
-    ha_processing.process_ser_files(&input_files, limit_top_pct);
+    ha_processing.process_ser_files(&input_files, limit_top_pct, enable_rotation);
     ha_processing.finalize(&output_file).expect("Failed to finalize buffer");
 }

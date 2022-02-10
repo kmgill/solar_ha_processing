@@ -14,7 +14,7 @@ else
     VERSION=""
 fi
 
-MOON_ROOT=Moon
+MOON_ROOT=Moon-ASI183MC
 
 # Los Angeles: 34.05 -118.25 
 LOC_LATITUDE=0.0
@@ -22,8 +22,8 @@ LOC_LONGITUDE=0.0
 
 MOON_MAX_SCALE=95
 
-CROP_WIDTH=2800
-CROP_HEIGHT=2800
+CROP_WIDTH=1300
+CROP_HEIGHT=1300
 
 check_file=`ls -1 $DATAROOT/$MOON_ROOT/*/*ser | head -n 1`
 BIT_DEPTH=`ser_info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
@@ -62,4 +62,5 @@ process_ha -v -i $DATAROOT/$MOON_ROOT/*/Moon*ser \
                 -s $MOON_SIGMA_MIN \
                 -n $FRAME_LIMIT \
                 -T moon \
+                --norot \
                 -P $MOON_MAX_SCALE 2>&1 | tee $DATAROOT/moon_${DATA_TS}${VERSION}.log

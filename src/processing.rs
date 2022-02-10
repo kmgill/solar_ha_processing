@@ -233,7 +233,7 @@ impl HaProcessing {
         (rotation, alt, az)
     }
 
-    pub fn process_frame(&self, buffer:&mut rgbimage::RgbImage, ts:&timestamp::TimeStamp, initial_rotation:f64) {
+    pub fn process_frame(&self, buffer:&mut rgbimage::RgbImage, ts:&timestamp::TimeStamp, initial_rotation:f64, enable_rotation:bool) {
 
         buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
 
@@ -248,16 +248,18 @@ impl HaProcessing {
             buffer.crop(x, y, self.width, self.height);
         }
 
-        let (rotation, alt, az) = self.get_rotation_for_time(&ts);
-        
-        let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
+        if enable_rotation {
+            let (rotation, alt, az) = self.get_rotation_for_time(&ts);
+            
+            let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
 
-        let do_rotation = initial_rotation - rotation;
+            let do_rotation = initial_rotation - rotation;
 
-        vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
-        vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
+            vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
+            vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
 
-        buffer.rotate(do_rotation.to_radians() as f32);
+            buffer.rotate(do_rotation.to_radians() as f32);
+        }
     }
 
     pub fn finalize(&mut self, out_path:&str) -> error::Result<&str> {
@@ -309,11 +311,12 @@ impl HaProcessing {
         rotation
     }
 
-    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>) {
+    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>, enable_rotation:bool) {
 
         let mut self_buffer = self.buffer.clone();
         let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
 
+        // We'll ignore this if we aren't doing rotation
         let initial_rotation = self.get_rotation_of_single_frame(&frame_records);
 
         frame_records.par_iter().for_each(|fr| {
@@ -326,7 +329,7 @@ impl HaProcessing {
                 Some(ser_file) => {
                     
                     let mut frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
-                    self.process_frame(&mut frame_buffer.buffer, &frame_buffer.timestamp, initial_rotation);
+                    self.process_frame(&mut frame_buffer.buffer, &frame_buffer.timestamp, initial_rotation, enable_rotation);
                     
                     //self.buffer.add(&frame_buffer.buffer);
                     // This is a bottleneck to parallelization. 
@@ -395,7 +398,7 @@ impl HaProcessing {
 
     }
 
-    pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8) {
+    pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8, enable_rotation:bool) {
 
         if limit_top_pct > 100 {
             panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
@@ -411,7 +414,7 @@ impl HaProcessing {
 
         let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
 
-        self.process_frame_records(&limited_frame_records);
+        self.process_frame_records(&limited_frame_records, enable_rotation);
 
         vprintln!("Total frames considered: {}", frame_records.len());
         vprintln!("Limited to top {}% of frames", limit_top_pct);
