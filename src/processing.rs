@@ -7,7 +7,6 @@ use crate::{
     solar,
     lunar,
     timestamp,
-    quality,
     ok,
     fpmap,
     parallacticangle,
@@ -17,7 +16,8 @@ use crate::{
 use sciimg::{
     error,
     enums::ImageMode,
-    rgbimage
+    rgbimage,
+    quality
 };
 
 use rayon::prelude::*;

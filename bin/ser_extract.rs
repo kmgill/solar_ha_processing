@@ -6,13 +6,13 @@ use solar_ha_processing::{
     print,
     path,
     vprintln,
-    quality,
     util,
     processing
 };
 
 use sciimg::{
-    rgbimage
+    rgbimage,
+    quality
 };
 
 use std::fs;

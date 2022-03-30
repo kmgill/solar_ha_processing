@@ -12,7 +12,6 @@ pub mod mean;
 pub mod solar;
 pub mod timestamp;
 pub mod processing;
-pub mod quality;
 pub mod params;
 pub mod fpmap;
 pub mod parallacticangle;

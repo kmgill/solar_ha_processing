@@ -672,12 +672,11 @@ checksum = "73b4b750c782965c211b42f022f59af1fbceabdd026623714f104152f1ec149f"
 
 [[package]]
 name = "sciimg"
-version = "0.1.8"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c68cc45134e9458e1f025cada115e1dabe8e4a609615f38dd421f4dafa04377a"
+checksum = "1f59803d2d707ecddc2490247693532ba7520dce1a7608a66753dd35411c1257"
 dependencies = [
  "chrono",
- "fastblur",
  "image",
  "imageproc",
  "lab",
