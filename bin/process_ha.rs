@@ -141,6 +141,13 @@ fn main() {
                         .help("Maximum sigma value (quality)")
                         .required(false)
                         .takes_value(true))    
+                    .arg(Arg::with_name(constants::param::PARAM_INITIAL_ROTATION)
+                        .short(constants::param::PARAM_INITIAL_ROTATION_SHORT)
+                        .long(constants::param::PARAM_INITIAL_ROTATION)
+                        .value_name("PARAM_INITIAL_ROTATION")
+                        .help("Force an initial rotation value")
+                        .required(false)
+                        .takes_value(true)) 
                     .arg(Arg::with_name(constants::param::PARAM_PCTOFMAX)
                         .short(constants::param::PARAM_PCTOFMAX_SHORT)
                         .long(constants::param::PARAM_PCTOFMAX)
@@ -360,6 +367,19 @@ fn main() {
         false => 100.0
     };
 
+    let initial_rotation = match matches.is_present(constants::param::PARAM_INITIAL_ROTATION) {
+        true => {
+            let s = matches.value_of(constants::param::PARAM_INITIAL_ROTATION).unwrap();
+            if util::string_is_valid_f64(&s) {
+                Some(s.parse::<f64>().unwrap())
+            } else {
+                eprintln!("Error: Invalid number specified for maximum sigma");
+                process::exit(1);
+            }
+        },
+        false => None
+    };
+
     let obs_latitude = match matches.is_present(constants::param::PARAM_LATITUDE) {
         true => {
             let s = matches.value_of(constants::param::PARAM_LATITUDE).unwrap();
@@ -471,6 +491,6 @@ fn main() {
                                                     pct_of_max,
                                                     number_of_frames,
                                                     target).expect("Failed to create processing context");
-    ha_processing.process_ser_files(&input_files, limit_top_pct, enable_rotation);
+    ha_processing.process_ser_files(&input_files, limit_top_pct, enable_rotation, initial_rotation);
     ha_processing.finalize(&output_file).expect("Failed to finalize buffer");
 }

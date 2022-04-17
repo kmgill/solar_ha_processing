@@ -83,8 +83,9 @@ fn main() {
     }
 
     let mut first_buff = imagebuffer::ImageBuffer::from_file(&first).expect("Error: failed to load file");
-    let second_buff = imagebuffer::ImageBuffer::from_file(&second).expect("Error: failed to load file");
+    let mut second_buff = imagebuffer::ImageBuffer::from_file(&second).expect("Error: failed to load file");
 
+    second_buff.scale_mut(0.6);
     first_buff.subtract_mut(&second_buff);
     
     vprintln!("Writing output file to {}", output_file);

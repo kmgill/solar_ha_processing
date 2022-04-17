@@ -109,5 +109,11 @@ pub mod param {
     pub const PARAM_TARGET : &str = "target";
     pub const PARAM_TARGET_SHORT : &str = "T";
 
+    pub const PARAM_SCALAR : &str = "scalar";
+    pub const PARAM_SCALAR_SHORT : &str = "s";
+
+    pub const PARAM_INITIAL_ROTATION : &str = "rotation";
+    pub const PARAM_INITIAL_ROTATION_SHORT : &str = "I";
+
     pub const PARAM_NO_ROTATION : &str = "norot";
 }

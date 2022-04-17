@@ -311,13 +311,16 @@ impl HaProcessing {
         rotation
     }
 
-    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>, enable_rotation:bool) {
+    fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>, enable_rotation:bool, initial_rotation:Option<f64>) {
 
         let mut self_buffer = self.buffer.clone();
         let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
 
         // We'll ignore this if we aren't doing rotation
-        let initial_rotation = self.get_rotation_of_single_frame(&frame_records);
+        let initial_rotation = match initial_rotation {
+            Some(r) => r,
+            None => self.get_rotation_of_single_frame(&frame_records)
+        };
 
         frame_records.par_iter().for_each(|fr| {
 
@@ -398,7 +401,7 @@ impl HaProcessing {
 
     }
 
-    pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8, enable_rotation:bool) {
+    pub fn process_ser_files(&mut self, ser_files:&Vec<&str>, limit_top_pct:u8, enable_rotation:bool, initial_rotation:Option<f64>) {
 
         if limit_top_pct > 100 {
             panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
@@ -414,7 +417,7 @@ impl HaProcessing {
 
         let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
 
-        self.process_frame_records(&limited_frame_records, enable_rotation);
+        self.process_frame_records(&limited_frame_records, enable_rotation, initial_rotation);
 
         vprintln!("Total frames considered: {}", frame_records.len());
         vprintln!("Limited to top {}% of frames", limit_top_pct);
