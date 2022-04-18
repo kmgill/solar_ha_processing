@@ -146,7 +146,7 @@ fn main() {
 
             let qual = quality::get_quality_estimation(&frame_buffer.buffer);
 
-            println!("{:>10}  {}-{:02}-{:02} {:02}:{:02}:{:02}.{:4}   {:.4} {:>10.4} {:>7}    {:>7}", i, 
+            println!("{:>10}  {}-{:02}-{:02} {:02}:{:02}:{:02}.{:04}   {:.4} {:>10.4} {:>7}    {:>7}", i, 
                                                     frame_buffer.timestamp.year, 
                                                     frame_buffer.timestamp.month, 
                                                     frame_buffer.timestamp.day,
