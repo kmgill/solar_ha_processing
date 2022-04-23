@@ -147,6 +147,7 @@ fn main() {
                         .value_name("PARAM_INITIAL_ROTATION")
                         .help("Force an initial rotation value")
                         .required(false)
+                        .allow_hyphen_values(true)
                         .takes_value(true)) 
                     .arg(Arg::with_name(constants::param::PARAM_PCTOFMAX)
                         .short(constants::param::PARAM_PCTOFMAX_SHORT)
