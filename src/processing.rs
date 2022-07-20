@@ -273,7 +273,9 @@ impl HaProcessing {
             vprintln!("    Stack Min/Max : {}, {} ({} images)", stackmin, stackmax, self.frame_count);
 
             if ! self.mask.is_empty() {
-                self.buffer.apply_mask(&self.mask.get_band(0));
+                for i in 0..self.buffer.num_bands() {
+                    self.buffer.apply_mask_to_band(&self.mask.get_band(0), i)
+                }
             }
 
             let mut rgb = match self.buffer.num_bands() {

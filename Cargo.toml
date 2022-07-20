@@ -34,53 +34,58 @@ assets = [
 name = "solar_ha_processing"
 
 [[bin]]
-name = "ser_info"
-path = "bin/ser_info.rs"
+name = "solha"
+path = "bin/solha.rs"
 
-[[bin]]
-name = "ser_extract_frame"
-path = "bin/ser_extract_frame.rs"
+# [[bin]]
+# name = "ser_info"
+# path = "bin/ser_info.rs"
 
-[[bin]]
-name = "ser_extract"
-path = "bin/ser_extract.rs"
+# [[bin]]
+# name = "ser_extract_frame"
+# path = "bin/ser_extract_frame.rs"
 
-[[bin]]
-name = "ser_mean"
-path = "bin/ser_mean.rs"
+# [[bin]]
+# name = "ser_extract"
+# path = "bin/ser_extract.rs"
 
-[[bin]]
-name = "process_ha"
-path = "bin/process_ha.rs"
+# [[bin]]
+# name = "ser_mean"
+# path = "bin/ser_mean.rs"
 
-[[bin]]
-name = "ha_add"
-path = "bin/ha_add.rs"
+# [[bin]]
+# name = "process_ha"
+# path = "bin/process_ha.rs"
 
-[[bin]]
-name = "ha_subtract"
-path = "bin/ha_subtract.rs"
+# [[bin]]
+# name = "ha_add"
+# path = "bin/ha_add.rs"
 
-[[bin]]
-name = "ha_composite"
-path = "bin/ha_composite.rs"
+# [[bin]]
+# name = "ha_subtract"
+# path = "bin/ha_subtract.rs"
 
-[[bin]]
-name = "ha_frame_stats"
-path = "bin/ha_frame_stats.rs"
+# [[bin]]
+# name = "ha_composite"
+# path = "bin/ha_composite.rs"
+
+# [[bin]]
+# name = "ha_frame_stats"
+# path = "bin/ha_frame_stats.rs"
 
 [dependencies]
 image = "0.24.1"
 imageproc = "0.23.0"
-clap = "2.33.3"
+clap = { version = "3.2.4", features = ["derive"] }
 memmap = "0.7.0"
 astro = "2.0.0"
 sun = "0.2.0"
 chrono = "0.4.19"
 fastblur = "0.1.1"
 rayon = "1.5.1"
-sciimg = "0.2.3"
+sciimg = "0.2.10"
 #sciimg = { path = "../sciimg" }
 toml = "0.5.8"
 serde = { version = "1.0.125", features = ["derive"] }
 astral = {  git="https://github.com/kmgill/astral" }
+wild = "2.0.4"
