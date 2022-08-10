@@ -83,7 +83,7 @@ sun = "0.2.0"
 chrono = "0.4.19"
 fastblur = "0.1.1"
 rayon = "1.5.1"
-sciimg = "0.2.10"
+sciimg = "0.3.1"
 #sciimg = { path = "../sciimg" }
 toml = "0.5.8"
 serde = { version = "1.0.125", features = ["derive"] }

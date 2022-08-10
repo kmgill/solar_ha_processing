@@ -311,14 +311,13 @@ impl SerFile {
             }
         }
         
-        let frame_buffer = imagebuffer::ImageBuffer::from_vec_as_mode(values, 
-            self.image_width, 
-            self.image_height,
-            match self.pixel_depth {
-                8 => ImageMode::U8BIT,
-                _ => ImageMode::U16BIT
-            }
-        ).expect("Failed to allocate image buffer");
+        let frame_buffer = imagebuffer::ImageBuffer::from_vec_as_mode(&values, 
+                                                                        self.image_width, 
+                                                                        self.image_height,
+                                                                        match self.pixel_depth {
+                                                                            8 => ImageMode::U8BIT,
+                                                                            _ => ImageMode::U16BIT
+                                                                        }).expect("Failed to allocate image buffer");
 
         match self.color_id {
             ColorFormatId::Mono => {
