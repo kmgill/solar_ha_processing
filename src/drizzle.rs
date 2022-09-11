@@ -4,6 +4,7 @@ use sciimg::prelude::*;
 use sciimg::Dn;
 use sciimg::imagebuffer::Offset;
 use sciimg::vector::Vector;
+use sciimg::matrix::Matrix;
 use crate::vprintln;
 
 
@@ -157,9 +158,6 @@ impl BilinearDrizzle {
 
                 let in_pt = self.buffer_point_to_input_point(x, y);
 
-                //assert_eq!(in_pt.x, x as f32);
-                //assert_eq!(in_pt.y, y as f32);
-                //vprintln!("Point: {:?} {}, {}", in_pt, other.width, other.height);
                 if in_pt.valid {
 
                     
@@ -167,9 +165,9 @@ impl BilinearDrizzle {
                         match self.get_interpolated_color(&in_pt, &other.get_band(band)) {
                             Some(v) => {
                                 self.buffer.put(x, 
-                                    y, 
-                                    v + self.buffer.get_band(0).get(x, y).unwrap(), 
-                                    band);
+                                                y, 
+                                                v + self.buffer.get_band(0).get(x, y).unwrap(), 
+                                                band);
 
                                 // If we're running as a 3 band drizzle buffer and the user passed in a single-band frame
                                 if other.num_bands() == 1 {
@@ -188,34 +186,45 @@ impl BilinearDrizzle {
 
             }
         }
-        //self.buffer.add(&other);
+        
         self.frame_add_count += 1;
 
         Ok("ok")
     }
 
-    pub fn add_with_translate(&mut self, other:&RgbImage, offset:Offset, rotation:f64) -> error::Result<&'static str>{
+    // Adds the image. Each pixel point will be transformed by the offset and rotation. Rotation is relative to 
+    // the center of mass.
+    pub fn add_with_transform(&mut self, other:&RgbImage, offset:Offset, rotation:f64) -> error::Result<&'static str>{
         vprintln!("Adding drizzle frame of offset {:?} and rotation {}", offset, rotation.to_degrees());
+
+
+        //let mut mtx = Matrix::identity();
+        let mtx = Matrix::rotate(rotation, Axis::ZAxis);
 
         for y in 0..self.out_height {
             for x in 0..self.out_width {
                 let mut in_pt = self.buffer_point_to_input_point(x, y);
-                in_pt.x -= offset.h;
-                in_pt.y -= offset.v;
 
-                // TODO: Bring to origin, then rotate, then put back.
-                let pt_vec = Vector::new(in_pt.x as f64, in_pt.y as f64, 0.0);
-                pt_vec.rotate_z(rotation);
-                in_pt.x = pt_vec.x as f32;
-                in_pt.y = pt_vec.y as f32;
+                let mut pt_vec = Vector::new(
+                                in_pt.x as f64 - (other.width / 2) as f64, 
+                                in_pt.y as f64 - (other.height / 2) as f64, 
+                                0.0);
+
+                pt_vec = mtx.multiply_vector(&pt_vec);
+                
+                in_pt.x = pt_vec.x as f32 + (other.width / 2) as f32;
+                in_pt.y = pt_vec.y as f32 + (other.height / 2) as f32;
+
+                in_pt.x -= offset.h;
+                in_pt.y -= offset.v;                
 
                 for band in 0..other.num_bands() {
                     match self.get_interpolated_color(&in_pt, &other.get_band(band)) {
                         Some(v) => {
                             self.buffer.put(x, 
-                                y, 
-                                v + self.buffer.get_band(0).get(x, y).unwrap(), 
-                                band);
+                                            y, 
+                                            v + self.buffer.get_band(0).get(x, y).unwrap(), 
+                                            band);
 
                             // If we're running as a 3 band drizzle buffer and the user passed in a single-band frame
                             if other.num_bands() == 1 {

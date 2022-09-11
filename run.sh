@@ -33,7 +33,7 @@ CROP_HEIGHT=1200
 
 
 check_file=`ls -1 $DATAROOT/$CHROME_ROOT/*/*ser | head -n 1`
-BIT_DEPTH=`ser_info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
+BIT_DEPTH=`solha ser-info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
 INITIAL_ROTATION=`solha frame-stats -i $check_file  -l $LOC_LATITUDE -L $LOC_LONGITUDE 2> /dev/null | head -n 2 | tail -n 1 | tr -s ' '  | cut -d ' ' -f 6`
 
@@ -62,7 +62,7 @@ elif [ $BIT_DEPTH -eq 16 ]; then
     CHROME_SIGMA_MAX=1285
     CHROME_TOP_PCT=20
 
-    PROM_THRESH=35000
+    PROM_THRESH=50000
     PROM_SIGMA_MIN=349
     PROM_SIGMA_MAX=1285
     PROM_TOP_PCT=20
@@ -163,9 +163,9 @@ solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -n $FRAME_LIMIT \
                 -I $INITIAL_ROTATION \
                 -T sun \
+                -u 1.5 \
                 -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
                 #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
-
 
 if [ $HAS_PROM -eq 1 ]; then
     echo "Starting Prominance Processing..."

@@ -338,12 +338,11 @@ impl HaProcessing {
             None => HaProcessing::get_rotation_of_single_frame(&frame_records, self.target, self.obs_latitude, self.obs_longitude)
         };
 
+        // Rust complains when we try to create a mutex over the main drizzle buffer, so we create a local
+        // copy, operate on that, then overwrite the main one. This also allows this function to 
+        // be called multiple times if we ever want to throw more frames at it. 
         let mut self_buffer = self.buffer.clone();
         let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
-
-        let target = self.target;
-        let obs_latitude = self.obs_latitude;
-        let obs_longitude = self.obs_longitude;
 
         frame_records.par_iter().for_each(|fr| {
 
@@ -355,12 +354,15 @@ impl HaProcessing {
                 Some(ser_file) => {
                     
                     let mut frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
-                    //frame_buffer.buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
+                    
+                    // I tried doing the call to calibrate() right here, but it came back black. If I call the old
+                    // function which now only does the calibrate(), it works. Huh.
                     self.process_frame(&mut frame_buffer.buffer);
+
                     let offset = frame_buffer.buffer.calc_center_of_mass_offset(self.obj_detect_threshold, 0);
 
                     let rotation = if enable_rotation {
-                        let (rotation, alt, az) = HaProcessing::get_rotation_for_time(&frame_buffer.timestamp, target, obs_latitude, obs_longitude);
+                        let (rotation, alt, az) = HaProcessing::get_rotation_for_time(&frame_buffer.timestamp, self.target, self.obs_latitude, self.obs_longitude);
                         let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
                         let do_rotation = initial_rotation - rotation;
                         vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, &frame_buffer.timestamp);
@@ -370,8 +372,11 @@ impl HaProcessing {
                         0.0
                     };
 
-                    // This is a bottleneck to parallelization. 
-                    buffer_mtx.lock().unwrap().add_with_translate(&frame_buffer.buffer, offset, rotation).unwrap();
+                    // This is a bottleneck to parallelization. In fact, the program is going to spend more time
+                    // here than on the calibration steps. But we also don't want to create a queue (do all the 
+                    // calibrations in a seperate thread then throw them at this function) as that will quickly
+                    // overwhelm system memory
+                    buffer_mtx.lock().unwrap().add_with_transform(&frame_buffer.buffer, offset, rotation).unwrap();
                 }
             };
 
