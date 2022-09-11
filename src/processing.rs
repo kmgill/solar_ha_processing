@@ -10,12 +10,12 @@ use crate::{
     ok,
     fpmap,
     parallacticangle,
-    enums::Target
+    enums::Target,
+    drizzle
 };
 
 use sciimg::{
     error,
-    enums::ImageMode,
     rgbimage,
     quality
 };
@@ -71,7 +71,9 @@ pub struct HaProcessing {
     pub mask:rgbimage::RgbImage,
     pub width:usize,
     pub height:usize,
-    pub buffer:rgbimage::RgbImage,
+    pub crop_width:usize,
+    pub crop_height:usize,
+    pub buffer:drizzle::BilinearDrizzle,
     pub frame_count:u32,
     pub obj_detect_threshold:f32,
     pub red_scalar:f32,
@@ -93,7 +95,8 @@ pub struct HaProcessing {
     pub pct_of_max:f32,
 
     pub number_of_frames: usize,
-    pub file_map: fpmap::FpMap
+    pub file_map: fpmap::FpMap,
+    pub drizzle_scale: drizzle::Scale
 }
 
 impl HaProcessing {
@@ -115,7 +118,8 @@ impl HaProcessing {
         }
     }
 
-    pub fn init_new(flat_path:&str, 
+    pub fn init_new(input_files:&Vec<&str>,
+                    flat_path:&str, 
                     dark_path:&str, 
                     dark_flat_path:&str,
                     mask_file:&str,
@@ -131,7 +135,8 @@ impl HaProcessing {
                     max_sigma:f32,
                     pct_of_max:f32,
                     number_of_frames:usize,
-                    target:Target) -> error::Result<HaProcessing> {
+                    target:Target,
+                    drizzle_scale:drizzle::Scale) -> error::Result<HaProcessing> {
         let flat = match flat_path.len() {
             0 => rgbimage::RgbImage::new_empty().unwrap(),
             _ => {
@@ -188,15 +193,23 @@ impl HaProcessing {
             }
         };
 
+        let ser1 = ser::SerFile::load_ser(input_files[0]).unwrap();
+
+
+
+        let drizzle_buffer = drizzle::BilinearDrizzle::new(ser1.image_width, ser1.image_height, drizzle_scale, 3);
+
         Ok(
             HaProcessing {
                 flat_field:flat,
                 dark_field:dark,
                 dark_flat_field:darkflat,
                 mask:mask,
-                width:crop_width,
-                height:crop_height,
-                buffer:rgbimage::RgbImage::new_with_bands(crop_width, crop_height, 3, ImageMode::U8BIT).unwrap(),
+                width:ser1.image_width,
+                height:ser1.image_height,
+                crop_width:crop_width,
+                crop_height:crop_height,
+                buffer:drizzle_buffer,
                 frame_count:0,
                 obj_detect_threshold:obj_detect_threshold,
                 red_scalar:red_scalar,
@@ -209,93 +222,97 @@ impl HaProcessing {
                 pct_of_max:pct_of_max,
                 number_of_frames:number_of_frames,
                 target:target,
-                file_map:fpmap::FpMap::new()
+                file_map:fpmap::FpMap::new(),
+                drizzle_scale:drizzle_scale
             }
         )
     }
 
 
-    pub fn get_rotation_for_time(&self, ts:&timestamp::TimeStamp) -> (f64, f64, f64) {
+    pub fn get_rotation_for_time(ts:&timestamp::TimeStamp, target:Target, obs_latitude:f32, obs_longitude:f32) -> (f64, f64, f64) {
 
-        let (alt, az) = match self.target {
+        let (alt, az) = match target {
             Target::Moon => {
                 vprintln!("Calculating position for Moon");
-                lunar::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts)
+                lunar::position_from_lat_lon_and_time(obs_latitude as f64, obs_longitude as f64, &ts)
             },
             Target::Sun => {
                 vprintln!("Calculating position for Sun");
-                solar::position_from_lat_lon_and_time(self.obs_latitude as f64, self.obs_longitude as f64, &ts)
+                solar::position_from_lat_lon_and_time(obs_latitude as f64, obs_longitude as f64, &ts)
             }
         };
 
-        let rotation = parallacticangle::from_lat_azimuth_altitude(self.obs_latitude as f64, az, alt);
+        let rotation = parallacticangle::from_lat_azimuth_altitude(obs_latitude as f64, az, alt);
 
         (rotation, alt, az)
     }
 
-    pub fn process_frame(&self, buffer:&mut rgbimage::RgbImage, ts:&timestamp::TimeStamp, initial_rotation:f64, enable_rotation:bool) {
-
+    pub fn process_frame(&self, buffer:&mut rgbimage::RgbImage)  {
         buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
 
-        let com = buffer.calc_center_of_mass_offset(self.obj_detect_threshold, 0);
-        buffer.shift(com.h, com.v);
+        // let com = buffer.calc_center_of_mass_offset(self.obj_detect_threshold, 0);
+        // com
+        // buffer.shift(com.h, com.v);
         
-        if self.width > 0 && self.height > 0 {
+        // if self.width > 0 && self.height > 0 {
 
-            let x = (buffer.width - self.width) / 2;
-            let y = (buffer.height - self.height) / 2;
+        //     let x = (buffer.width - self.width) / 2;
+        //     let y = (buffer.height - self.height) / 2;
 
-            buffer.crop(x, y, self.width, self.height);
-        }
+        //     buffer.crop(x, y, self.width, self.height);
+        // }
 
-        if enable_rotation {
-            let (rotation, alt, az) = self.get_rotation_for_time(&ts);
+        // if enable_rotation {
+        //     let (rotation, alt, az) = self.get_rotation_for_time(&ts);
             
-            let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
+        //     let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
 
-            let do_rotation = initial_rotation - rotation;
+        //     let do_rotation = initial_rotation - rotation;
 
-            vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
-            vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
+        //     vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
+        //     vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
 
-            buffer.rotate(do_rotation.to_radians() as f32);
-        }
+        //     buffer.rotate(do_rotation.to_radians() as f32);
+        // }
     }
 
     pub fn finalize(&mut self, out_path:&str) -> error::Result<&str> {
 
         if self.frame_count > 0 {
-            for band in 0..self.buffer.num_bands() {
-                self.buffer.apply_weight_on_band(1.0 / self.frame_count as f32, band);
-            }
 
-            let (stackmin, stackmax) = self.buffer.get_min_max_all_channel();
+            let mut final_buffer = self.buffer.get_finalized().unwrap();
+
+            // for band in 0..self.buffer.num_bands() {
+            //     self.buffer.apply_weight_on_band(1.0 / self.frame_count as f32, band);
+            // }
+
+            let crop_width = (self.crop_width as f32 * self.drizzle_scale.value()).round() as usize;
+            let crop_height = (self.crop_height as f32 * self.drizzle_scale.value()).round() as usize;
+            let x = (final_buffer.width - crop_width) / 2;
+            let y = (final_buffer.height - crop_height) / 2;
+            final_buffer.crop(x, y, crop_width, crop_height);
+
+            let (stackmin, stackmax) = final_buffer.get_min_max_all_channel();
             vprintln!("    Stack Min/Max : {}, {} ({} images)", stackmin, stackmax, self.frame_count);
 
             if ! self.mask.is_empty() {
-                for i in 0..self.buffer.num_bands() {
-                    self.buffer.apply_mask_to_band(&self.mask.get_band(0), i)
+                for i in 0..final_buffer.num_bands() {
+                    final_buffer.apply_mask_to_band(&self.mask.get_band(0), i)
                 }
             }
 
-            let mut rgb = match self.buffer.num_bands() {
-                1 => {
-                    rgbimage::RgbImage::new_from_buffers_rgb(&self.buffer.get_band(0), &self.buffer.get_band(0), &self.buffer.get_band(0), self.buffer.get_mode()).unwrap()
-                },
-                3 => self.buffer.clone(),
-                _ => panic!("Unsupported number of bands")
-            };
-            rgb.apply_weight_on_band(self.red_scalar, 0);
-            rgb.apply_weight_on_band(self.green_scalar, 1);
-            rgb.apply_weight_on_band(self.blue_scalar, 2);
+            final_buffer.apply_weight_on_band(self.red_scalar, 0);
+            final_buffer.apply_weight_on_band(self.green_scalar, 1);
+            final_buffer.apply_weight_on_band(self.blue_scalar, 2);
 
             
-            if rgb.get_mode() == ImageMode::U8BIT {
-                let (_, maxval) = rgb.get_min_max_all_channel();
-                rgb.normalize_to_16bit_with_max(maxval / (self.pct_of_max / 100.0));
-            }
+            //if final_buffer.get_mode() == ImageMode::U8BIT {
+                let (_, maxval) = final_buffer.get_min_max_all_channel();
+                final_buffer.normalize_to_16bit_with_max(maxval / (self.pct_of_max / 100.0));
+            //}
 
-            rgb.save(out_path);
+            vprintln!("Final image size: {}, {}", final_buffer.width, final_buffer.height);
+            final_buffer.save(out_path);
 
             ok!()
         } else {
@@ -305,24 +322,28 @@ impl HaProcessing {
     }
 
 
-    fn get_rotation_of_single_frame(&self, frame_records:&Vec<FrameRecord>) -> f64 {
+    fn get_rotation_of_single_frame(frame_records:&Vec<FrameRecord>, target:Target, obs_latitude:f32, obs_longitude:f32) -> f64 {
         let frame_record = &frame_records[0];
         let ser_file = ser::SerFile::load_ser(frame_record.source_file.as_str()).expect("Unable to load SER file");
         let frame_buffer = ser_file.get_frame(frame_record.frame_id).unwrap();
-        let (rotation, _alt, _az) = self.get_rotation_for_time(&frame_buffer.timestamp);
+        let (rotation, _alt, _az) = HaProcessing::get_rotation_for_time(&frame_buffer.timestamp, target, obs_latitude, obs_longitude);
         rotation
     }
 
     fn process_frame_records(&mut self, frame_records:&Vec<FrameRecord>, enable_rotation:bool, initial_rotation:Option<f64>) {
 
-        let mut self_buffer = self.buffer.clone();
-        let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
-
         // We'll ignore this if we aren't doing rotation
         let initial_rotation = match initial_rotation {
             Some(r) => r,
-            None => self.get_rotation_of_single_frame(&frame_records)
+            None => HaProcessing::get_rotation_of_single_frame(&frame_records, self.target, self.obs_latitude, self.obs_longitude)
         };
+
+        let mut self_buffer = self.buffer.clone();
+        let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
+
+        let target = self.target;
+        let obs_latitude = self.obs_latitude;
+        let obs_longitude = self.obs_longitude;
 
         frame_records.par_iter().for_each(|fr| {
 
@@ -334,11 +355,23 @@ impl HaProcessing {
                 Some(ser_file) => {
                     
                     let mut frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
-                    self.process_frame(&mut frame_buffer.buffer, &frame_buffer.timestamp, initial_rotation, enable_rotation);
-                    
-                    //self.buffer.add(&frame_buffer.buffer);
+                    //frame_buffer.buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
+                    self.process_frame(&mut frame_buffer.buffer);
+                    let offset = frame_buffer.buffer.calc_center_of_mass_offset(self.obj_detect_threshold, 0);
+
+                    let rotation = if enable_rotation {
+                        let (rotation, alt, az) = HaProcessing::get_rotation_for_time(&frame_buffer.timestamp, target, obs_latitude, obs_longitude);
+                        let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
+                        let do_rotation = initial_rotation - rotation;
+                        vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, &frame_buffer.timestamp);
+                        vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
+                        do_rotation.to_radians()
+                    } else {
+                        0.0
+                    };
+
                     // This is a bottleneck to parallelization. 
-                    buffer_mtx.lock().unwrap().add(&frame_buffer.buffer);
+                    buffer_mtx.lock().unwrap().add_with_translate(&frame_buffer.buffer, offset, rotation).unwrap();
                 }
             };
 

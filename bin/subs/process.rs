@@ -4,7 +4,8 @@ use crate::subs::runnable::RunnableSubcommand;
 use solar_ha_processing::{
     path,
     processing,
-    enums::Target
+    enums::Target,
+    drizzle
 };
 
 use std::process;
@@ -77,6 +78,9 @@ pub struct Process {
 
     #[clap(long, help = "Disable parallactic rotation")]
     norot: bool,
+
+    #[clap(long, short='u', help = "Drizze upscale (1.5, 2.0, 3.0")]
+    drizzle: Option<String>,
 
 }   
 
@@ -222,11 +226,31 @@ impl RunnableSubcommand for Process {
             None => 100.0
         };
 
+        let drizzle_scale = match &self.drizzle {
+            Some(s) => {
+
+                match s.as_str() {
+                    "1.0" => drizzle::Scale::Scale1_0,
+                    "1.5" => drizzle::Scale::Scale1_5,
+                    "2.0" => drizzle::Scale::Scale2_0,
+                    "3.0" => drizzle::Scale::Scale3_0,
+                    _ => {
+                        eprintln!("Invalid drizze scale: {}. Valid options: 1.0, 1.5, 2.0, 3.0", s);
+                        process::exit(1);
+                    }
+                }
+
+            },
+            None => drizzle::Scale::Scale1_0
+        };
+
         let enable_rotation = !self.norot;
 
         let input_files : Vec<&str> = self.input_files.iter().map(|s| s.as_str()).collect();
 
-        let mut ha_processing = processing::HaProcessing::init_new(&flat_frame, 
+        let mut ha_processing = processing::HaProcessing::init_new(
+                                                                        &input_files,
+                                                                        &flat_frame, 
                                                                                     &dark_frame, 
                                                                                     &dark_flat_frame,
                                                                                     &mask_file,
@@ -242,7 +266,8 @@ impl RunnableSubcommand for Process {
                                                                                     max_sigma,
                                                                                     pct_of_max,
                                                                                     number_of_frames,
-                                                                                    target).expect("Failed to create processing context");
+                                                                                    target,
+                                                                                    drizzle_scale).expect("Failed to create processing context");
         ha_processing.process_ser_files(&input_files, limit_top_pct, enable_rotation, initial_rotation);
         ha_processing.finalize(&self.output).expect("Failed to finalize buffer");
         
