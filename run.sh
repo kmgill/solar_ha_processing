@@ -19,9 +19,12 @@ PHOTO_DARK_ROOT=Sun_-_Whitelight_-_Tamron_-_Dark
 PHOTO_FLAT_ROOT=Sun_-_Whitelight_-_Tamron_-_Flat
 PHOTO_DARK_FLAT_ROOT=Sun_-_Whitelight_-_Tamron_-_Flat_Dark
 
-# Los Angeles: 34.05 -118.25 
-LOC_LATITUDE=0.0
-LOC_LONGITUDE=0.0
+
+# location.sh should be an executable script setting the variables
+# LOC_LATITUDE and LOC_LONGITUDE for the location the observations
+# were made.
+source location.sh
+
 
 CHROME_MAX_SCALE=99
 PROM_MAX_SCALE=100
@@ -30,7 +33,7 @@ PHOTO_MAX_SCALE=90
 CROP_WIDTH=1200
 CROP_HEIGHT=1200
 
-
+DRIZZLE_SCALE=2.0
 
 check_file=`ls -1 $DATAROOT/$CHROME_ROOT/*/*ser | head -n 1`
 BIT_DEPTH=`solha ser-info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
@@ -60,7 +63,7 @@ elif [ $BIT_DEPTH -eq 16 ]; then
     CHROME_THRESH=20560
     CHROME_SIGMA_MIN=349
     CHROME_SIGMA_MAX=1285
-    CHROME_TOP_PCT=20
+    CHROME_TOP_PCT=80
 
     PROM_THRESH=50000
     PROM_SIGMA_MIN=349
@@ -107,12 +110,17 @@ echo Prominance Top Percentage: $PROM_TOP_PCT
 echo Photosphere Threshold: $PHOTO_THRESH
 echo Photosphere Top Percentage: $PHOTO_TOP_PCT
 echo Initial Rotation: $INITIAL_ROTATION
+echo Drizzle Upscale Amount: $DRIZZLE_SCALE
 
 echo
 echo Output Chromosphere: $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png
 echo Output Prominance: $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png
 echo Output Composite: $DATAROOT/Sun_Composite_${DATA_TS}${VERSION}.png
 echo Output Photosphere: $DATAROOT/Sun_Photo_${DATA_TS}${VERSION}.png
+
+echo
+echo Observation Latitude: $LOC_LATITUDE
+echo Observation Longitude: $LOC_LONGITUDE
 
 HAS_PROM=0
 if [ -d $DATAROOT/$PROM_ROOT ]; then
@@ -145,12 +153,11 @@ echo Including Flatfield inpu\(s\):
 ls -1 $DATAROOT/$FLAT_ROOT/*/*ser
 echo
 
-
+                # -D $DATAROOT/$DARK_FLAT_ROOT/*/*ser \
 echo "Starting Chromosphere Processing..."
 solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -d $DATAROOT/$DARK_ROOT/*/*ser \
                 -f $DATAROOT/$FLAT_ROOT/*/*ser \
-                -D $DATAROOT/$DARK_FLAT_ROOT/*/*ser \
                 -o $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
                 -t $CHROME_THRESH \
                 -w $CROP_WIDTH \
@@ -161,12 +168,12 @@ solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -S $CHROME_SIGMA_MAX \
                 -s $CHROME_SIGMA_MIN \
                 -n $FRAME_LIMIT \
-                -I $INITIAL_ROTATION \
+                -I 0 \
                 -T sun \
-                -u 1.5 \
+                -u $DRIZZLE_SCALE \
                 -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
                 #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
-
+ 
 if [ $HAS_PROM -eq 1 ]; then
     echo "Starting Prominance Processing..."
     solha -v process -i $DATAROOT/$PROM_ROOT/*/*ser \
@@ -185,6 +192,7 @@ if [ $HAS_PROM -eq 1 ]; then
                     -n $FRAME_LIMIT \
                     -I $INITIAL_ROTATION \
                     -T sun \
+                    -u $DRIZZLE_SCALE \
                     -P $PROM_MAX_SCALE 2>&1 | tee $DATAROOT/prominance_${DATA_TS}${VERSION}.log
                     #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 
@@ -214,6 +222,7 @@ if [ $HAS_PHOTO -eq 1 ]; then
                 -s $PHOTO_SIGMA_MIN \
                 -I $INITIAL_ROTATION \
                 -T sun \
+                -u $DRIZZLE_SCALE \
                 -P $PHOTO_MAX_SCALE 2>&1 | tee $DATAROOT/photosphere_${DATA_TS}${VERSION}.log
 fi
 
