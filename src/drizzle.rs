@@ -223,7 +223,7 @@ impl BilinearDrizzle {
                         Some(v) => {
                             self.buffer.put(x, 
                                             y, 
-                                            v + self.buffer.get_band(0).get(x, y).unwrap(), 
+                                            v + self.buffer.get_band(band).get(x, y).unwrap(), 
                                             band);
 
                             // If we're running as a 3 band drizzle buffer and the user passed in a single-band frame
