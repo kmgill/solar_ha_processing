@@ -17,3 +17,4 @@ pub mod fpmap;
 pub mod parallacticangle;
 pub mod lunar;
 pub mod drizzle;
+pub mod guassianblur;

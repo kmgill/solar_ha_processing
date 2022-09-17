@@ -133,16 +133,14 @@ impl BilinearDrizzle {
         let yd = pt.y_frac();
         let xd = pt.x_frac();
 
-        if yd == 0.0 && xd == 0.0 {
-            Some(v00)
-        } else {
-            // Bilinear interpolation
-            let v0 = v10 * yd + v00 * (1.0 - yd);
-            let v1 = v11 * yd + v01 * (1.0 - yd);
-            let v = v1 * xd + v0 * (1.0 - xd);
-            
-            Some(v)
-        }
+
+        // Bilinear interpolation
+        let v0 = v10 * yd + v00 * (1.0 - yd);
+        let v1 = v11 * yd + v01 * (1.0 - yd);
+        let v = v1 * xd + v0 * (1.0 - xd);
+        
+        Some(v)
+
 
 
     }
@@ -247,6 +245,7 @@ impl BilinearDrizzle {
             Err("No frames have been added, cannot divide mean by zero")
         } else {
             let mut final_buffer = self.buffer.clone();
+
             for band in 0..final_buffer.num_bands() {
                 final_buffer.apply_weight_on_band(1.0 / self.frame_add_count as f32, band);
             }
