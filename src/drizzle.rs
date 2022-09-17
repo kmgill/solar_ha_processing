@@ -7,7 +7,6 @@ use sciimg::vector::Vector;
 use sciimg::matrix::Matrix;
 use crate::vprintln;
 
-
 fn round_f64(v:f64) -> f64 {
     (v * 100000.0).round() / 100000.0
 }
@@ -245,7 +244,6 @@ impl BilinearDrizzle {
             Err("No frames have been added, cannot divide mean by zero")
         } else {
             let mut final_buffer = self.buffer.clone();
-
             for band in 0..final_buffer.num_bands() {
                 final_buffer.apply_weight_on_band(1.0 / self.frame_add_count as f32, band);
             }

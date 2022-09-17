@@ -2,18 +2,21 @@
 
 use sciimg::DnVec;
 use sciimg::VecMath;
-use sciimg::prelude::*;
+use sciimg::rgbimage::RgbImage;
+use sciimg::imagebuffer::ImageBuffer;
+use sciimg::error;
 use sciimg::Dn;
 use sciimg::max;
 use crate::vprintln;
 
 //  SSSSSLLLLOOOOOOWWWWWWW.....
-pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, radius:usize) -> error::Result<Vec<ImageBuffer>> {
+pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, sigma:f32) -> error::Result<Vec<ImageBuffer>> {
     if buffers.len() == 0 {
         return Err("No buffers provided");
     }
     
-    let sigma = max!(radius as f32 / 2.0, 1.0);
+    let radius = max!((3.0 * sigma).ceil(), 1.0) as usize;
+    
     let kernel_length = radius * 2 + 1;
 
     let mut kernel = DnVec::zeros(kernel_length);
@@ -105,18 +108,18 @@ pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, radius:usize) -> error::Re
 
 
 pub trait RgbImageBlur {
-    fn guassian_blur(&mut self, radius:usize);
+    fn guassian_blur(&mut self, sigma:f32);
 }
 
 impl RgbImageBlur for RgbImage {
 
-    fn guassian_blur(&mut self, radius:usize) {
+    fn guassian_blur(&mut self, sigma:f32) {
         let mut buffers = vec![];
         for b in 0..self.num_bands() {
             buffers.push(self.get_band(b).to_owned());
         }
 
-        match guassian_blur_nband(&buffers, radius) {
+        match guassian_blur_nband(&buffers, sigma) {
             Ok(buffers) => {
                 for b in 0..buffers.len() {
                     self.set_band(&buffers[b], b);
