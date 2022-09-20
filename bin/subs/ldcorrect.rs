@@ -17,6 +17,9 @@ pub struct LdCorrect {
     #[clap(long, short,  help = "Solar radius in pixels")]
     radius_pixels: usize,
 
+    #[clap(long, short,  help = "Limb darkening coefficient")]
+    ld_coefficient: Option<f64>,
+
     #[clap(long, short, help = "Output image")]
     output: String,
 }   
@@ -34,6 +37,12 @@ impl RunnableSubcommand for LdCorrect {
             process::exit(2);
         }
 
-        ldcorrect::limb_darkening_correction(&self.input_file, &self.output, self.radius_pixels);
+        
+        let ld_coefficient = match self.ld_coefficient {
+            Some(v) => v,
+            None => 0.0 // Zero value (0.0) will trigger the function to attempt to calculate it
+        };
+
+        ldcorrect::limb_darkening_correction(&self.input_file, &self.output, self.radius_pixels, ld_coefficient);
     }
 }

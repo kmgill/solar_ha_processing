@@ -106,7 +106,7 @@ pub fn print_radial_intensities(image_file:&String, radius_pixels:usize) {
 }
 
 
-pub fn limb_darkening_correction(image_file:&String, output_file:&String, radius_pixels:usize) {
+pub fn limb_darkening_correction(image_file:&String, output_file:&String, radius_pixels:usize, ld_coefficient:f64) {
     if ! path::file_exists(image_file) {
         eprintln!("ERROR: File not found: {}", image_file);
         process::exit(1);
@@ -119,6 +119,15 @@ pub fn limb_darkening_correction(image_file:&String, output_file:&String, radius
 
     vprintln!("Opening input file: {}", image_file);
     let img = RgbImage::open16(image_file).unwrap();
+
+    let corrected_output = limb_darkening_correction_on_image(&img, radius_pixels, ld_coefficient);
+
+    vprintln!("Writing corrected image to {}", output_file);
+    corrected_output.save(output_file); 
+}  
+
+
+pub fn limb_darkening_correction_on_image(img:&RgbImage, radius_pixels:usize, ld_coefficient:f64) -> RgbImage {
 
     vprintln!("Generating output buffer of size {}x{}", img.width, img.height);
     let mut corrected_output = ImageBuffer::new(img.width, img.height).unwrap();
@@ -152,6 +161,13 @@ pub fn limb_darkening_correction(image_file:&String, output_file:&String, radius
 
     vprintln!("Computed limb darkening coefficient: {}", (i_c as Dn - radial_averages[radial_averages.len() - 1 - LIMB_EXTENSION_MARGIN]) / i_c as Dn);
 
+    // Compute radial coefficient if caller passed in zero
+    let u = if ld_coefficient == 0.0 {
+        (i_c - radial_averages[radial_averages.len() - 1 - LIMB_EXTENSION_MARGIN]as f64) / i_c
+    } else {
+        ld_coefficient
+    };
+    
     vprintln!("Computing pixel corrections");
     for y in 0..img.height {
         for x in 0..img.width {
@@ -172,16 +188,15 @@ pub fn limb_darkening_correction(image_file:&String, output_file:&String, radius
 
             } else {
                 
-                let radial_avg = radial_averages[r.round() as usize] as f64;
-                let u = (i_c - radial_avg) / i_c;
-                let corrected = i_c * (u * (1.0 - ( (a*a - r*r) / (a*a)  ).sqrt())) + i as f64;
+                let model_intensity = i_c * (1.0 - u * (1.0 - ( (a*a - r*r) / (a*a)  ).sqrt()));
+                let corrected_u = (i_c - model_intensity) / i_c;
+                let corrected = i_c * (corrected_u * (1.0 - ( (a*a - r*r) / (a*a)  ).sqrt())) + i as f64;
 
                 corrected_output.put(x, y, corrected as Dn);
             }
         }
     }
 
-    vprintln!("Writing corrected image to {}", output_file);
-    corrected_output.save(output_file, img.get_mode());
+    RgbImage::new_from_buffers_rgb(&corrected_output, &corrected_output, &corrected_output, ImageMode::U16BIT).unwrap()
 
 }
