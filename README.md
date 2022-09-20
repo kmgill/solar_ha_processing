@@ -68,3 +68,5 @@ Di, K., and Li, R. (2004), CAHVOR camera model and its photogrammetric conversio
 https://doi.org/10.1029/2003JE002199
 
 Gennery, D.B. Generalized Camera Calibration Including Fish-Eye Lenses. Int J Comput Vision 68, 239–266 (2006). https://doi.org/10.1007/s11263-006-5168-1
+
+Tatum, Jeremy. (2022), Stellar Atmospheres, https://phys.libretexts.org/Bookshelves/Astronomy__Cosmology/Stellar_Atmospheres_(Tatum)/06%3A_Limb_Darkening/6.01%3A_Introduction._The_Empirical_Limb-darkening
