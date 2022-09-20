@@ -34,7 +34,8 @@ enum SolHa {
     Mean(mean::Mean),
     Process(process::Process),
     SerInfo(serinfo::SerInfo),
-    Subtract(subtract::Subtract)
+    Subtract(subtract::Subtract),
+    LdCorrect(ldcorrect::LdCorrect)
 }
 
 fn main() {
@@ -72,6 +73,9 @@ fn main() {
         SolHa::Subtract(args) => {
             args.run();
         },
+        SolHa::LdCorrect(args) => {
+            args.run();
+        }
 
     };
 }

@@ -19,3 +19,5 @@ pub mod lunar;
 pub mod drizzle;
 pub mod guassianblur;
 pub mod unsharp;
+pub mod ldcorrect;
+pub mod point;

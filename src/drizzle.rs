@@ -1,11 +1,11 @@
 
 
 use sciimg::prelude::*;
-use sciimg::Dn;
 use sciimg::imagebuffer::Offset;
 use sciimg::vector::Vector;
 use sciimg::matrix::Matrix;
 use crate::vprintln;
+use crate::point::Point;
 
 fn round_f64(v:f64) -> f64 {
     (v * 100000.0).round() / 100000.0
@@ -41,40 +41,6 @@ pub struct BilinearDrizzle {
     frame_add_count:usize
 }
 
-#[derive(Debug)]
-struct Point {
-    x:f32,
-    y:f32,
-    valid:bool
-}
-
-impl Point {
-    pub fn x_frac(&self) -> f32 {
-        self.x - self.x.floor()
-    }
-
-    pub fn x_fl(&self) -> usize {
-        self.x.floor() as usize
-    }
-
-    pub fn x_cl(&self) -> usize {
-        self.x.ceil() as usize
-    }
-
-    pub fn y_frac(&self) -> f32 {
-        self.y - self.y.floor()
-    }
-
-    pub fn y_fl(&self) -> usize {
-        self.y.floor() as usize
-    }
-
-    pub fn y_cl(&self) -> usize {
-        self.y.ceil() as usize
-    }
-    
-
-}
 
 
 impl BilinearDrizzle {
@@ -114,35 +80,6 @@ impl BilinearDrizzle {
         }
     }
 
-    fn get_interpolated_color(&self, pt:&Point, buffer:&ImageBuffer) -> Option<Dn> {
-        // If the rounded-up value of an x or y point exceeds the buffer dimensions, use the floor
-        let x_cl = if pt.x_cl() < buffer.width { pt.x_cl() } else { pt.x_fl() };
-        let y_cl = if pt.y_cl() < buffer.height { pt.y_cl() } else { pt.y_fl() };
-
-        if x_cl >= buffer.width || y_cl >= buffer.height || pt.x_fl() >= buffer.width || pt.y_fl() >= buffer.height {
-            return None;
-        }
-
-
-        let v00 = buffer.get(pt.x_fl(), pt.y_fl()).unwrap();
-        let v01 = buffer.get(x_cl, pt.y_fl()).unwrap();
-        let v10 = buffer.get(pt.x_fl(), y_cl).unwrap();
-        let v11 = buffer.get(x_cl, y_cl).unwrap();
-
-        let yd = pt.y_frac();
-        let xd = pt.x_frac();
-
-
-        // Bilinear interpolation
-        let v0 = v10 * yd + v00 * (1.0 - yd);
-        let v1 = v11 * yd + v01 * (1.0 - yd);
-        let v = v1 * xd + v0 * (1.0 - xd);
-        
-        Some(v)
-
-
-
-    }
 
     /// Adds an image that has already been translated and rotated but not upscaled.
     pub fn add(&mut self, other:&RgbImage) -> error::Result<&'static str>{
@@ -159,7 +96,7 @@ impl BilinearDrizzle {
 
                     
                     for band in 0..other.num_bands() {
-                        match self.get_interpolated_color(&in_pt, &other.get_band(band)) {
+                        match in_pt.get_interpolated_color(&other.get_band(band)) {
                             Some(v) => {
                                 self.buffer.put(x, 
                                                 y, 
@@ -216,7 +153,7 @@ impl BilinearDrizzle {
                 in_pt.y -= offset.v;                
 
                 for band in 0..other.num_bands() {
-                    match self.get_interpolated_color(&in_pt, &other.get_band(band)) {
+                    match in_pt.get_interpolated_color(&other.get_band(band)) {
                         Some(v) => {
                             self.buffer.put(x, 
                                             y, 

@@ -8,4 +8,5 @@ pub mod mean;
 pub mod process;
 pub mod serinfo;
 pub mod subtract;
+pub mod ldcorrect;
 pub mod runnable;
