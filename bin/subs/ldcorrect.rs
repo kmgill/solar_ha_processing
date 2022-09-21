@@ -3,7 +3,8 @@ use crate::subs::runnable::RunnableSubcommand;
 
 use solar_ha_processing::{
     path,
-    ldcorrect
+    ldcorrect,
+    vprintln
 };
 
 use std::process;
@@ -43,6 +44,11 @@ impl RunnableSubcommand for LdCorrect {
             None => 0.0 // Zero value (0.0) will trigger the function to attempt to calculate it
         };
 
-        ldcorrect::limb_darkening_correction(&self.input_file, &self.output, self.radius_pixels, ld_coefficient);
+        match ldcorrect::limb_darkening_correction(&self.input_file, &self.output, self.radius_pixels, ld_coefficient) {
+            Ok(_) => {
+                vprintln!("Done")
+            }, 
+            Err(why) => eprintln!("Error: {}", why)
+        };
     }
 }
