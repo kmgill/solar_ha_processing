@@ -18,8 +18,8 @@ pub struct LdCorrect {
     #[clap(long, short,  help = "Solar radius in pixels")]
     radius_pixels: usize,
 
-    #[clap(long, short,  help = "Limb darkening coefficient")]
-    ld_coefficient: Option<f64>,
+    #[clap(long, short,  help = "Limb darkening coefficient", multiple_values(true))]
+    ld_coefficient: Option<Vec<f64>>,
 
     #[clap(long, short, help = "Output image")]
     output: String,
@@ -39,12 +39,12 @@ impl RunnableSubcommand for LdCorrect {
         }
 
         
-        let ld_coefficient = match self.ld_coefficient {
-            Some(v) => v,
-            None => 0.0 // Zero value (0.0) will trigger the function to attempt to calculate it
+        let ld_coefficient = match &self.ld_coefficient {
+            Some(v) => v.clone(),
+            None => vec![0.0_f64] // Zero value (0.0) will trigger the function to attempt to calculate it
         };
 
-        match ldcorrect::limb_darkening_correction(&self.input_file, &self.output, self.radius_pixels, ld_coefficient) {
+        match ldcorrect::limb_darkening_correction(&self.input_file, &self.output, self.radius_pixels, &ld_coefficient) {
             Ok(_) => {
                 vprintln!("Done")
             }, 
