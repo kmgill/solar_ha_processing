@@ -21,3 +21,4 @@ pub mod guassianblur;
 pub mod unsharp;
 pub mod ldcorrect;
 pub mod point;
+pub mod threshtest;

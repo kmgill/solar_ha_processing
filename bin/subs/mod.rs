@@ -9,4 +9,5 @@ pub mod process;
 pub mod serinfo;
 pub mod subtract;
 pub mod ldcorrect;
+pub mod threshtest;
 pub mod runnable;

@@ -35,7 +35,8 @@ enum SolHa {
     Process(process::Process),
     SerInfo(serinfo::SerInfo),
     Subtract(subtract::Subtract),
-    LdCorrect(ldcorrect::LdCorrect)
+    LdCorrect(ldcorrect::LdCorrect),
+    ThreshTest(threshtest::ThreshTest)
 }
 
 fn main() {
@@ -74,6 +75,9 @@ fn main() {
             args.run();
         },
         SolHa::LdCorrect(args) => {
+            args.run();
+        },
+        SolHa::ThreshTest(args) => {
             args.run();
         }
 
