@@ -11,7 +11,7 @@ use crate::{
     fpmap,
     parallacticangle,
     enums::Target,
-    drizzle
+    drizzle::{self, BilinearDrizzle}
 };
 
 use sciimg::{
@@ -19,19 +19,17 @@ use sciimg::{
     rgbimage,
     quality
 };
-
 use rayon::prelude::*;
-use std::sync::{Arc, Mutex};
-
 use std::cmp::Ordering;
 
 const UNKNOWN_ROTATION:f64 = -99999.0;
 
 #[derive(Debug, Clone)]
-struct FrameRecord {
-    source_file:String,
-    frame_id:usize,
-    quality_value:f32
+pub struct FrameRecord {
+    pub source_file:String,
+    pub frame_id:usize,
+    pub quality_value:f32,
+    pub use_frame:bool
 }
 
 
@@ -63,6 +61,18 @@ impl Eq for FrameRecord {
     
 }
 
+
+struct ProcessContext {
+    pub frame_records: Vec<FrameRecord>,
+    pub drizzle_buffer: BilinearDrizzle,
+    pub obj_detect_threshold:f32,
+    pub obs_latitude:f32,
+    pub obs_longitude:f32,
+    pub target:Target,
+    pub flat_field:rgbimage::RgbImage,
+    pub dark_field:rgbimage::RgbImage,
+    pub dark_flat_field:rgbimage::RgbImage
+}
 
 pub struct HaProcessing {
     pub flat_field:rgbimage::RgbImage,
@@ -249,31 +259,6 @@ impl HaProcessing {
 
     pub fn process_frame(&self, buffer:&mut rgbimage::RgbImage)  {
         buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
-
-        // let com = buffer.calc_center_of_mass_offset(self.obj_detect_threshold, 0);
-        // com
-        // buffer.shift(com.h, com.v);
-        
-        // if self.width > 0 && self.height > 0 {
-
-        //     let x = (buffer.width - self.width) / 2;
-        //     let y = (buffer.height - self.height) / 2;
-
-        //     buffer.crop(x, y, self.width, self.height);
-        // }
-
-        // if enable_rotation {
-        //     let (rotation, alt, az) = self.get_rotation_for_time(&ts);
-            
-        //     let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
-
-        //     let do_rotation = initial_rotation - rotation;
-
-        //     vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, ts);
-        //     vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
-
-        //     buffer.rotate(do_rotation.to_radians() as f32);
-        // }
     }
 
     pub fn finalize(&mut self, out_path:&str) -> error::Result<&str> {
@@ -338,90 +323,97 @@ impl HaProcessing {
             None => HaProcessing::get_rotation_of_single_frame(&frame_records, self.target, self.obs_latitude, self.obs_longitude)
         };
 
-        // Rust complains when we try to create a mutex over the main drizzle buffer, so we create a local
-        // copy, operate on that, then overwrite the main one. This also allows this function to 
-        // be called multiple times if we ever want to throw more frames at it. 
-        let mut self_buffer = self.buffer.clone();
-        let buffer_mtx = Arc::new(Mutex::new(&mut self_buffer));
+        let num_per_chunk = frame_records.len() / num_cpus::get();
 
-        frame_records.par_iter().for_each(|fr| {
+        let contexts = frame_records.chunks(num_per_chunk).map(|fr| {
+            ProcessContext {
+                frame_records:fr.to_vec(),
+                drizzle_buffer:self.buffer.clone(),
+                obj_detect_threshold:self.obj_detect_threshold,
+                obs_latitude:self.obs_latitude,
+                obs_longitude:self.obs_longitude,
+                target:self.target,
+                flat_field:self.flat_field.clone(),
+                dark_field:self.dark_field.clone(),
+                dark_flat_field:self.dark_flat_field.clone()
+            }
+        }).collect::<Vec<ProcessContext>>();
 
-            // Using get_dont_open so we can keep it as unmutable. Should we want to go to lazy loading of
-            // the ser files (though they'd already be loaded in the quality estimation stage), we'd
-            // have to find a way to use just get()
-            match self.file_map.get_dont_open(&fr.source_file) {
-                None => panic!("SER file does not exist in file map. Not good, Kevin. Not good."),
-                Some(ser_file) => {
-                    
-                    let mut frame_buffer = ser_file.get_frame(fr.frame_id).unwrap();
-                    
-                    // I tried doing the call to calibrate() right here, but it came back black. If I call the old
-                    // function which now only does the calibrate(), it works. Huh.
-                    self.process_frame(&mut frame_buffer.buffer);
+        let drizzles = contexts.into_par_iter().map(|mut context| {
+                let mut file_map = fpmap::FpMap::new();
 
-                    let offset = frame_buffer.buffer.calc_center_of_mass_offset(self.obj_detect_threshold, 0);
+                for frame_record in context.frame_records {
 
-                    let rotation = if enable_rotation {
-                        let (rotation, alt, az) = HaProcessing::get_rotation_for_time(&frame_buffer.timestamp, self.target, self.obs_latitude, self.obs_longitude);
-                        let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
-                        let do_rotation = initial_rotation - rotation;
-                        vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, &frame_buffer.timestamp);
-                        vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
-                        do_rotation.to_radians()
-                    } else {
-                        0.0
+                    if ! frame_record.use_frame {
+                        continue;
+                    }
+
+                    match file_map.get(&frame_record.source_file) {
+                        None => panic!("SER file does not exist in file map. Not good, Kevin. Not good."),
+                        Some(ser_file) => {
+                            
+                            let mut frame_buffer = ser_file.get_frame(frame_record.frame_id).unwrap();
+                            
+                            frame_buffer.buffer.calibrate(&context.flat_field, &context.dark_field, &context.dark_flat_field);
+
+                            let offset = frame_buffer.buffer.calc_center_of_mass_offset(context.obj_detect_threshold, 0);
+        
+                            let rotation = if enable_rotation {
+                                let (rotation, alt, az) = HaProcessing::get_rotation_for_time(&frame_buffer.timestamp, context.target, context.obs_latitude, context.obs_longitude);
+                                let start_rot = if initial_rotation == UNKNOWN_ROTATION { rotation } else { initial_rotation };
+                                let do_rotation = initial_rotation - rotation;
+                                vprintln!("Rotation for frame is {} for az/alt {},{} at time {:?}", rotation, az, alt, &frame_buffer.timestamp);
+                                vprintln!("Initial rotation was {}, effective rotation is {}", start_rot, do_rotation);
+                                do_rotation.to_radians()
+                            } else {
+                                0.0
+                            };
+                            
+                            match context.drizzle_buffer.add_with_transform(&frame_buffer.buffer, offset, rotation) {
+                                Ok(_) => {},
+                                Err(why) => {
+                                    eprintln!("Error drizzling frame: {}", why);
+                                }
+                            }
+                        }
                     };
 
-                    // This is a bottleneck to parallelization. In fact, the program is going to spend more time
-                    // here than on the calibration steps. But we also don't want to create a queue (do all the 
-                    // calibrations in a seperate thread then throw them at this function) as that will quickly
-                    // overwhelm system memory
-                    buffer_mtx.lock().unwrap().add_with_transform(&frame_buffer.buffer, offset, rotation).unwrap();
+
                 }
-            };
 
-        });
+                context.drizzle_buffer
+            }).collect::<Vec<BilinearDrizzle>>();
 
-        self.buffer = self_buffer.clone();
+        for drizzle_buffer in drizzles {
+            self.buffer.add_drizzle(&drizzle_buffer).unwrap();
+        }
+
         self.frame_count += frame_records.len() as u32;
     }
 
     fn determine_quality_in_ser(&self, ser_file:&ser::SerFile) -> Vec<FrameRecord>{
-        let mut frame_records: Vec<FrameRecord> = vec!();
-
-        let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
 
         let frame_count = if ser_file.frame_count > self.number_of_frames { self.number_of_frames } else { ser_file.frame_count };
-
-        (0..frame_count).into_par_iter().for_each(|i| {
+        
+        (0..frame_count).into_par_iter().map(|i| {
             let frame_buffer = ser_file.get_frame(i).unwrap();
             let qual = quality::get_quality_estimation(&frame_buffer.buffer);
             vprintln!("Quality value of frame {} is {}", ser_file.source_file, qual);
-            if qual >= self.min_sigma && qual <= self.max_sigma {
-                let fr = FrameRecord{
-                    source_file:ser_file.source_file.to_string(),
-                    frame_id:i,
-                    quality_value:qual
-                };
-                frame_records_mtx.lock().unwrap().push(fr);
-            } else {
-                vprintln!("Frame #{} in file {} falls out of sigma range ({}) and will be excluded", i, ser_file.source_file, qual);
+            FrameRecord{
+                source_file:ser_file.source_file.to_string(),
+                frame_id:i,
+                quality_value:qual,
+                use_frame: qual >= self.min_sigma && qual <= self.max_sigma
             }
-        });
-
-        frame_records
+        }).collect::<Vec<FrameRecord>>()
     }
 
     fn determine_quality_across_sers(&self) -> Vec<FrameRecord>{
-        let mut frame_records: Vec<FrameRecord> = vec!();
 
-        let frame_records_mtx = Arc::new(Mutex::new(&mut frame_records));
-
-        self.file_map.get_map().par_iter().for_each(|item| {
+        let mut frame_records:Vec<FrameRecord> = self.file_map.get_map().par_iter().map(|item| {
             let (_pth, sf) = item;
-            let mut list = self.determine_quality_in_ser(sf);
-            frame_records_mtx.lock().unwrap().append(&mut list);
-        });
+            self.determine_quality_in_ser(&sf)
+        }).collect::<Vec<Vec<FrameRecord>>>().iter().flatten().map(|fr| { fr.to_owned() }).collect::<Vec<FrameRecord>>();
 
         frame_records.sort(); // Sorts in ascending order
         frame_records.reverse();

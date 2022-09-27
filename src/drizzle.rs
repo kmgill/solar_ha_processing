@@ -4,6 +4,7 @@ use sciimg::prelude::*;
 use sciimg::imagebuffer::Offset;
 use sciimg::vector::Vector;
 use sciimg::matrix::Matrix;
+use sciimg::error;
 use crate::vprintln;
 use crate::point::Point;
 
@@ -188,4 +189,18 @@ impl BilinearDrizzle {
         }
     }
 
+
+
+    pub fn add_drizzle(&mut self, other:&BilinearDrizzle) -> error::Result<&str> {
+
+        if other.out_width != self.out_width {
+            return Err("Buffer dimensions are different. Cannot merge");
+        }
+
+        self.buffer.add(&other.buffer);
+        self.frame_add_count += other.frame_add_count;
+
+        Ok("ok")
+    }
 }
+

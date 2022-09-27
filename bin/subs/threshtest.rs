@@ -2,7 +2,7 @@
 
 use crate::subs::runnable::RunnableSubcommand;
 
-use solar_ha_processing::{
+use solhat::{
     path,
     vprintln,
     ser,

@@ -1,6 +1,6 @@
 
 
-use solar_ha_processing::{
+use solhat::{
     solar::util,
     parallacticangle
 };
