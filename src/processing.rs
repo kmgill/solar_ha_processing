@@ -101,7 +101,7 @@ pub struct HaProcessing {
 
 impl HaProcessing {
 
-    fn is_ser_file(ser_file_path:&str) -> bool {
+    pub fn is_ser_file(ser_file_path:&str) -> bool {
         match path::get_extension(ser_file_path) {
             Some("ser") | Some("SER") => true,
             _ => false

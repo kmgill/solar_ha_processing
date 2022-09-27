@@ -1,9 +1,9 @@
 [package]
-name = "solar_ha_processing"
+name = "solhat"
 version = "0.4.1"
 authors = ["Kevin M. Gill <apoapsys@gmail.com>"]
 edition = "2021"
-description = "A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging"
+description = "Solar Hydrogen Alpha Telescope: A set of utilities and a pipeline for processing raw hydrogen-alpha solar imaging using lucky imaging"
 repository = "https://github.com/kmgill/solar_ha_processing"
 readme = "README.md"
 keywords = ["sun", "astrophotography", "science"]
