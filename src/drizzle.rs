@@ -39,7 +39,8 @@ pub struct BilinearDrizzle {
     out_width:usize,
     out_height:usize,
     buffer:RgbImage,
-    frame_add_count:usize
+    frame_add_count:usize,
+    divisor:ImageBuffer
 }
 
 
@@ -55,7 +56,8 @@ impl BilinearDrizzle {
             out_width: out_width, 
             out_height: out_height, 
             frame_add_count: 0,
-            buffer:RgbImage::new_with_bands(out_width, out_height, num_bands, ImageMode::U16BIT).expect("Failed to allocate rgbimage")
+            buffer:RgbImage::new_with_bands(out_width, out_height, num_bands, ImageMode::U16BIT).expect("Failed to allocate rgbimage"),
+            divisor:ImageBuffer::new(out_width, out_height).expect("Failed to create drizzle divisor buffer")
         }
     }
 
@@ -95,6 +97,7 @@ impl BilinearDrizzle {
 
                 if in_pt.valid {
 
+                    self.divisor.put(x, y, self.divisor.get(x, y).unwrap() + 1.0);
                     
                     for band in 0..other.num_bands() {
                         match in_pt.get_interpolated_color(&other.get_band(band)) {
@@ -153,6 +156,7 @@ impl BilinearDrizzle {
                 in_pt.x -= offset.h;
                 in_pt.y -= offset.v;                
 
+                self.divisor.put(x, y, self.divisor.get(x, y).unwrap() + 1.0);
                 for band in 0..other.num_bands() {
                     match in_pt.get_interpolated_color(&other.get_band(band)) {
                         Some(v) => {
@@ -182,9 +186,10 @@ impl BilinearDrizzle {
             Err("No frames have been added, cannot divide mean by zero")
         } else {
             let mut final_buffer = self.buffer.clone();
-            for band in 0..final_buffer.num_bands() {
-                final_buffer.apply_weight_on_band(1.0 / self.frame_add_count as f32, band);
-            }
+            final_buffer.divide_from_each(&self.divisor);
+            // for band in 0..final_buffer.num_bands() {
+            //     final_buffer.apply_weight_on_band(1.0 / self.frame_add_count as f32, band);
+            // }
             Ok(final_buffer)
         }
     }
@@ -198,6 +203,7 @@ impl BilinearDrizzle {
         }
 
         self.buffer.add(&other.buffer);
+        self.divisor.add_mut(&other.divisor);
         self.frame_add_count += other.frame_add_count;
 
         Ok("ok")
