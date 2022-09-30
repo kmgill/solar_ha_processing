@@ -4,7 +4,8 @@
 use crate::{
     vprintln,
     print,
-    timestamp
+    timestamp,
+    binfilereader::*
 };
 
 use sciimg::{
@@ -14,11 +15,6 @@ use sciimg::{
     rgbimage,
     debayer
 };
-
-use std::convert::TryInto;
-
-use memmap::Mmap;
-use std::fs::File;
 
 const HEADER_SIZE_BYTES : usize = 178;
 const TIMESTAMP_SIZE_BYTES : usize = 8;
@@ -59,12 +55,6 @@ impl ColorFormatId {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Endian {
-    BigEndian = 1,
-    LittleEndian = 0,
-    NativeEndian = 100
-}
 
 impl Endian {
     pub fn from_i32(v:i32) -> Endian {
@@ -93,7 +83,6 @@ pub struct SerFile {
     pub file_id: String,            // 14 bytes
     pub camera_series_id: i32,      // 4 bytes
     pub color_id: ColorFormatId,    // 4 bytes
-    pub endian: Endian,             // 4 bytes
     pub image_width: usize,         // 4 bytes
     pub image_height: usize,        // 4 bytes
     pub pixel_depth: usize,         // 4 bytes
@@ -104,35 +93,10 @@ pub struct SerFile {
     pub date_time: timestamp::TimeStamp,       // 8 bytes,
     pub date_time_utc: timestamp::TimeStamp,   // 8 bytes,
     pub total_size: usize,          // Total file size (used for validation)
-    map: Mmap,
+    file_reader: BinFileReader,
     pub source_file:String
 }
 
-
-fn read_string(map:&Mmap, start:usize, len:usize) -> String {
-    let v:Vec<u8> = map[start..(start + len)].iter().map(|x| x.clone()).collect();
-    String::from_utf8(v).expect("Failed reading string value")
-}
-
-macro_rules! bytes_to_primitive {
-    ($bytes:ident, $type:ident, $endian:expr) => {
-        match $endian {
-            Endian::BigEndian => $type::from_be_bytes($bytes),
-            Endian::LittleEndian => $type::from_le_bytes($bytes),
-            Endian::NativeEndian => $type::from_ne_bytes($bytes)
-        }
-    };
-}
-
-fn read_u64(map:&Mmap, start:usize) -> u64 {
-    let v: [u8; 8] = map[start..(start + 8)].try_into().expect("slice with incorrect length");
-    bytes_to_primitive!(v, u64, Endian::LittleEndian)
-}
-
-fn read_i32(map:&Mmap, start:usize) -> i32 {
-    let v: [u8; 4] = map[start..(start + 4)].try_into().expect("slice with incorrect length");
-    bytes_to_primitive!(v, i32, Endian::LittleEndian)
-}
 
 impl SerFrame {
     pub fn new(single_band_buffer:&imagebuffer::ImageBuffer, timestamp:u64) -> SerFrame {
@@ -173,7 +137,6 @@ impl SerFile {
         println!("File Id: {}", self.file_id);
         println!("Camera Series Id: {}", self.camera_series_id);
         println!("Color Id: {:?}", self.color_id);
-        println!("Endian: {:?}", self.endian);
         println!("Image Width: {}", self.image_width);
         println!("Image Height: {}", self.image_height);
         println!("Pixel Depth: {}", self.pixel_depth);
@@ -189,28 +152,25 @@ impl SerFile {
 
     pub fn load_ser(file_path:&str) -> error::Result<SerFile> {
 
-        let ser_file_ptr = File::open(file_path).expect("Error opening file");
-
-        let map: Mmap = unsafe { 
-            Mmap::map(&ser_file_ptr).expect("Error creating memory map")
-        };
+        let mut file_reader = BinFileReader::new_as_endiness(&file_path.to_string(), Endian::LittleEndian);
+        let endiness = Endian::from_i32(file_reader.read_i32(22));  // 4 bytes, start at 22
+        file_reader.set_endiness(endiness);
 
         let ser = SerFile {
-            file_id: read_string(&map, 0, 14),                               // 14 bytes
-            camera_series_id: read_i32(&map, 14),                            // 4 bytes, start at 14
-            color_id: ColorFormatId::from_i32(read_i32(&map, 18)),           // 4 bytes, start at 18
-            endian: Endian::from_i32(read_i32(&map, 22)),                    // 4 bytes, start at 22
-            image_width: read_i32(&map, 26) as usize,                        // 4 bytes, start at 26
-            image_height: read_i32(&map, 30) as usize,                       // 4 bytes, start at 30
-            pixel_depth: read_i32(&map, 34) as usize,                        // 4 bytes, start at 34
-            frame_count: read_i32(&map, 38) as usize,                        // 4 bytes, start at 38
-            observer: read_string(&map, 42, 40),                             // 40 bytes, start at 42
-            instrument: read_string(&map, 82, 40),                           // 40 bytes, start at 82
-            telescope: read_string(&map, 122, 40),                           // 40 bytes, start at 122
-            date_time: timestamp::TimeStamp::from_u64(read_u64(&map, 162)),      // 8 bytes, start at 162
-            date_time_utc: timestamp::TimeStamp::from_u64(read_u64(&map, 170)),  // 8 bytes, start at 170
-            total_size: map.len(),
-            map: map,
+            file_id: file_reader.read_string(0, 14),                               // 14 bytes
+            camera_series_id: file_reader.read_i32(14),                            // 4 bytes, start at 14
+            color_id: ColorFormatId::from_i32(file_reader.read_i32(18)),           // 4 bytes, start at 18                   
+            image_width: file_reader.read_i32(26) as usize,                        // 4 bytes, start at 26
+            image_height: file_reader.read_i32(30) as usize,                       // 4 bytes, start at 30
+            pixel_depth: file_reader.read_i32(34) as usize,                        // 4 bytes, start at 34
+            frame_count: file_reader.read_i32(38) as usize,                        // 4 bytes, start at 38
+            observer: file_reader.read_string(42, 40),                             // 40 bytes, start at 42
+            instrument: file_reader.read_string(82, 40),                           // 40 bytes, start at 82
+            telescope: file_reader.read_string(122, 40),                           // 40 bytes, start at 122
+            date_time: timestamp::TimeStamp::from_u64(file_reader.read_u64(162)),      // 8 bytes, start at 162
+            date_time_utc: timestamp::TimeStamp::from_u64(file_reader.read_u64(170)),  // 8 bytes, start at 170
+            total_size: file_reader.len(),
+            file_reader: file_reader,
             source_file: file_path.to_string()
         };
 
@@ -267,11 +227,7 @@ impl SerFile {
         }
 
         let timestamp_start_index = self.timestamp_start_index(frame_num);
-        let timestamp_bytes : [u8; 8] = self.map[timestamp_start_index..(timestamp_start_index+TIMESTAMP_SIZE_BYTES)].try_into().expect("slice with incorrect length");
-
-        Ok(
-            bytes_to_primitive!(timestamp_bytes, u64, Endian::NativeEndian)
-        )
+        Ok(self.file_reader.read_u64_with_endiness(timestamp_start_index, Endian::NativeEndian))
     }
 
     pub fn get_frame(&self, frame_num:usize) -> error::Result<SerFrame> {
@@ -285,7 +241,7 @@ impl SerFile {
 
         vprintln!("Extracting image frame #{} of {} from {}. Size {} at byte index {}", frame_num, self.frame_count, self.source_file, image_frame_size_bytes, image_frame_start_index);
 
-        let bytes:Vec<u8> = self.map[image_frame_start_index..(image_frame_start_index + image_frame_size_bytes)].iter().map(|x| x.clone()).collect();
+        let bytes = self.file_reader.read_bytes(image_frame_start_index, image_frame_size_bytes);
 
         let mut values:Vec<f32> = Vec::with_capacity(self.image_width * self.image_height);
         values.resize(self.image_width * self.image_height, 0.0);
@@ -301,8 +257,7 @@ impl SerFile {
                     let pixel_bytes : u8 = bytes[pixel_start];
                     pixel_value = pixel_bytes as f32;
                 } else if self.pixel_depth == 16 {
-                    let pixel_bytes : [u8; 2] = bytes[pixel_start..(pixel_start+2)].try_into().expect("slice with incorrect length");
-                    pixel_value = bytes_to_primitive!(pixel_bytes, u16, self.endian) as f32;
+                    pixel_value = self.file_reader.read_u16(pixel_start) as f32;
                 } else {
                     panic!("Encountered unsupported pixel depth: {}", self.pixel_depth);
                 }
