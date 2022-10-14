@@ -1,22 +1,23 @@
-
-
+use crate::vprintln;
+use sciimg::error;
+use sciimg::imagebuffer::ImageBuffer;
+use sciimg::max;
+use sciimg::rgbimage::RgbImage;
+use sciimg::Dn;
 use sciimg::DnVec;
 use sciimg::VecMath;
-use sciimg::rgbimage::RgbImage;
-use sciimg::imagebuffer::ImageBuffer;
-use sciimg::error;
-use sciimg::Dn;
-use sciimg::max;
-use crate::vprintln;
 
 //  SSSSSLLLLOOOOOOWWWWWWW.....
-pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, sigma:f32) -> error::Result<Vec<ImageBuffer>> {
+pub fn guassian_blur_nband(
+    buffers: &Vec<ImageBuffer>,
+    sigma: f32,
+) -> error::Result<Vec<ImageBuffer>> {
     if buffers.len() == 0 {
         return Err("No buffers provided");
     }
-    
+
     let radius = max!((3.0 * sigma).ceil(), 1.0) as usize;
-    
+
     let kernel_length = radius * 2 + 1;
 
     let mut kernel = DnVec::zeros(kernel_length);
@@ -28,12 +29,12 @@ pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, sigma:f32) -> error::Resul
         let exponent_numerator = -(i * i) as Dn;
         let exponent_denominator = 2.0 * sigma * sigma;
 
-        let e_expression = (std::f32::consts::E as Dn).powf(exponent_numerator / exponent_denominator);
+        let e_expression =
+            (std::f32::consts::E as Dn).powf(exponent_numerator / exponent_denominator);
         let kernel_value = e_expression / 2.0 * std::f32::consts::PI * sigma * sigma;
 
         kernel[(i + r) as usize] = kernel_value;
         sum += kernel_value;
-
     }
 
     // Normalize kernel
@@ -42,18 +43,16 @@ pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, sigma:f32) -> error::Resul
     }
 
     let mut out_buffers = buffers.clone();
-    
+
     let buffer_width = buffers[0].width;
     let buffer_height = buffers[0].height;
 
     // 1st pass: Horizontal Blur
     for x in 0..buffer_width {
         for y in 0..buffer_height {
-
-            let mut values = DnVec::zeros(buffers.len());            
+            let mut values = DnVec::zeros(buffers.len());
 
             for kernel_i in -r..r {
-
                 // Protect image bounds
                 if x as i32 - kernel_i < 0 || x as i32 - kernel_i >= buffer_width as i32 {
                     continue;
@@ -62,16 +61,17 @@ pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, sigma:f32) -> error::Resul
                 let kernel_value = kernel[(kernel_i + r) as usize];
 
                 for b in 0..buffers.len() {
-                    values[b] += out_buffers[b].get(x - kernel_i as usize, y as usize).unwrap() * kernel_value;
+                    values[b] += out_buffers[b]
+                        .get(x - kernel_i as usize, y as usize)
+                        .unwrap()
+                        * kernel_value;
                 }
-
             }
 
             for i in 0..out_buffers.len() {
                 out_buffers[i].put(x, y, values[i]);
             }
         }
-
     }
 
     let buffers = out_buffers.clone();
@@ -80,11 +80,9 @@ pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, sigma:f32) -> error::Resul
     // 2nd pass: Vertical Blur
     for x in 0..buffer_width {
         for y in 0..buffer_height {
-
-            let mut values = DnVec::zeros(buffers.len());  
+            let mut values = DnVec::zeros(buffers.len());
 
             for kernel_i in -r..r {
-
                 // Protect image bounds
                 if y as i32 - kernel_i < 0 || y as i32 - kernel_i >= buffer_height as i32 {
                     continue;
@@ -92,28 +90,27 @@ pub fn guassian_blur_nband(buffers:&Vec<ImageBuffer>, sigma:f32) -> error::Resul
 
                 let kernel_value = kernel[(kernel_i + r) as usize];
                 for b in 0..buffers.len() {
-                    values[b] += out_buffers[b].get(x as usize, y - kernel_i as usize).unwrap() * kernel_value;
+                    values[b] += out_buffers[b]
+                        .get(x as usize, y - kernel_i as usize)
+                        .unwrap()
+                        * kernel_value;
                 }
-                
             }
 
             for i in 0..out_buffers.len() {
                 out_buffers[i].put(x, y, values[i]);
             }
         }
-
     }
     Ok(out_buffers)
 }
 
-
 pub trait RgbImageBlur {
-    fn guassian_blur(&mut self, sigma:f32);
+    fn guassian_blur(&mut self, sigma: f32);
 }
 
 impl RgbImageBlur for RgbImage {
-
-    fn guassian_blur(&mut self, sigma:f32) {
+    fn guassian_blur(&mut self, sigma: f32) {
         let mut buffers = vec![];
         for b in 0..self.num_bands() {
             buffers.push(self.get_band(b).to_owned());
@@ -124,8 +121,8 @@ impl RgbImageBlur for RgbImage {
                 for b in 0..buffers.len() {
                     self.set_band(&buffers[b], b);
                 }
-            },
-            Err(why) => vprintln!("{}", why)
+            }
+            Err(why) => vprintln!("{}", why),
         };
     }
 }

@@ -1,11 +1,8 @@
-use crate::{
-    timestamp, 
-    vprintln
-};
+use crate::{timestamp, vprintln};
 
 use astral;
 
-pub fn position_from_lat_lon_and_time(lat:f64, lon:f64, ts:&timestamp::TimeStamp) -> (f64, f64) {
+pub fn position_from_lat_lon_and_time(lat: f64, lon: f64, ts: &timestamp::TimeStamp) -> (f64, f64) {
     let unixtime = ts.to_unix_timestamp() as f64;
     vprintln!("Time {:?} converted to unix timestamp {}", ts, unixtime);
 

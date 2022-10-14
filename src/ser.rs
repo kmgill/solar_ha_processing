@@ -1,24 +1,11 @@
-
 // Technical specification: http://www.grischa-hahn.homepage.t-online.de/astro/ser/SER%20Doc%20V3b.pdf
 
-use crate::{
-    vprintln,
-    print,
-    timestamp,
-    binfilereader::*
-};
+use crate::{binfilereader::*, print, timestamp, vprintln};
 
-use sciimg::{
-    imagebuffer,
-    error,
-    enums::ImageMode,
-    rgbimage,
-    debayer
-};
+use sciimg::{debayer, enums::ImageMode, error, imagebuffer, rgbimage};
 
-const HEADER_SIZE_BYTES : usize = 178;
-const TIMESTAMP_SIZE_BYTES : usize = 8;
-
+const HEADER_SIZE_BYTES: usize = 178;
+const TIMESTAMP_SIZE_BYTES: usize = 8;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ColorFormatId {
@@ -31,12 +18,12 @@ pub enum ColorFormatId {
     BayerYcmy = 17,
     BayerYmcy = 18,
     BayerMyyc = 19,
-    Rgb       = 100,
-    Bgr       = 101
+    Rgb = 100,
+    Bgr = 101,
 }
 
 impl ColorFormatId {
-    pub fn from_i32(v:i32) -> ColorFormatId {
+    pub fn from_i32(v: i32) -> ColorFormatId {
         match v {
             0 => ColorFormatId::Mono,
             8 => ColorFormatId::BayerRggb,
@@ -49,89 +36,93 @@ impl ColorFormatId {
             19 => ColorFormatId::BayerMyyc,
             100 => ColorFormatId::Rgb,
             101 => ColorFormatId::Bgr,
-            _ => panic!("Invalid color format enum value: {}", v)
+            _ => panic!("Invalid color format enum value: {}", v),
         }
     }
 }
 
-
-
 impl Endian {
-    pub fn from_i32(v:i32) -> Endian {
+    pub fn from_i32(v: i32) -> Endian {
         match v {
             1 => Endian::BigEndian,
             0 => Endian::LittleEndian,
             100 => Endian::NativeEndian,
-            _ => panic!("Invalid endian enum value")
+            _ => panic!("Invalid endian enum value"),
         }
     }
 }
-
 
 // Variable size of pixel_depth * image_width * image_height
 // Frames block is frame_size * num_images
 // Frames block starts off at byte 178
 pub struct SerFrame {
-    pub buffer:rgbimage::RgbImage,
-    pub timestamp: timestamp::TimeStamp
+    pub buffer: rgbimage::RgbImage,
+    pub timestamp: timestamp::TimeStamp,
 }
 
 // Header is a fixed size of 178 bytes
 // Optional trailer starts at num_images * pixel_depth * image_width * image_height
 // Trailer size is 8 byte (i64) time stamps for each frame, size is 8 * num_images
 pub struct SerFile {
-    pub file_id: String,            // 14 bytes
-    pub camera_series_id: i32,      // 4 bytes
-    pub color_id: ColorFormatId,    // 4 bytes
-    pub image_width: usize,         // 4 bytes
-    pub image_height: usize,        // 4 bytes
-    pub pixel_depth: usize,         // 4 bytes
-    pub frame_count: usize,         // 4 bytes
-    pub observer: String,           // 40 bytes
-    pub instrument: String,         // 40 bytes
-    pub telescope: String,          // 40 bytes
-    pub date_time: timestamp::TimeStamp,       // 8 bytes,
-    pub date_time_utc: timestamp::TimeStamp,   // 8 bytes,
-    pub total_size: usize,          // Total file size (used for validation)
+    pub file_id: String,                     // 14 bytes
+    pub camera_series_id: i32,               // 4 bytes
+    pub color_id: ColorFormatId,             // 4 bytes
+    pub image_width: usize,                  // 4 bytes
+    pub image_height: usize,                 // 4 bytes
+    pub pixel_depth: usize,                  // 4 bytes
+    pub frame_count: usize,                  // 4 bytes
+    pub observer: String,                    // 40 bytes
+    pub instrument: String,                  // 40 bytes
+    pub telescope: String,                   // 40 bytes
+    pub date_time: timestamp::TimeStamp,     // 8 bytes,
+    pub date_time_utc: timestamp::TimeStamp, // 8 bytes,
+    pub total_size: usize,                   // Total file size (used for validation)
     file_reader: BinFileReader,
-    pub source_file:String
+    pub source_file: String,
 }
 
-
 impl SerFrame {
-    pub fn new(single_band_buffer:&imagebuffer::ImageBuffer, timestamp:u64) -> SerFrame {
-
-        let mut buffer = rgbimage::RgbImage::new_with_bands(single_band_buffer.width, single_band_buffer.height, 1, single_band_buffer.mode).unwrap();
+    pub fn new(single_band_buffer: &imagebuffer::ImageBuffer, timestamp: u64) -> SerFrame {
+        let mut buffer = rgbimage::RgbImage::new_with_bands(
+            single_band_buffer.width,
+            single_band_buffer.height,
+            1,
+            single_band_buffer.mode,
+        )
+        .unwrap();
         buffer.add_to_each(&single_band_buffer);
 
         SerFrame {
-            buffer:buffer,
-            timestamp:timestamp::TimeStamp::from_u64(timestamp)
+            buffer: buffer,
+            timestamp: timestamp::TimeStamp::from_u64(timestamp),
         }
     }
 
-    pub fn new_three_channel(r:&imagebuffer::ImageBuffer, g:&imagebuffer::ImageBuffer, b:&imagebuffer::ImageBuffer, timestamp:u64) -> SerFrame {
-
+    pub fn new_three_channel(
+        r: &imagebuffer::ImageBuffer,
+        g: &imagebuffer::ImageBuffer,
+        b: &imagebuffer::ImageBuffer,
+        timestamp: u64,
+    ) -> SerFrame {
         let buffer = rgbimage::RgbImage::new_from_buffers_rgb(&r, &g, &b, r.mode).unwrap();
 
         SerFrame {
-            buffer:buffer,
-            timestamp:timestamp::TimeStamp::from_u64(timestamp)
+            buffer: buffer,
+            timestamp: timestamp::TimeStamp::from_u64(timestamp),
         }
     }
 
-    pub fn new_rgb(rgb:rgbimage::RgbImage, timestamp:u64) -> SerFrame {
+    pub fn new_rgb(rgb: rgbimage::RgbImage, timestamp: u64) -> SerFrame {
         SerFrame {
-            buffer:rgb,
-            timestamp:timestamp::TimeStamp::from_u64(timestamp)
+            buffer: rgb,
+            timestamp: timestamp::TimeStamp::from_u64(timestamp),
         }
     }
 }
 
 // Full implementation of the SER specification is sorta impractical at this time
-// since I lack both the requisite test data and the motivation to actually do it. 
+// since I lack both the requisite test data and the motivation to actually do it.
 impl SerFile {
-
     pub fn print_header_details(&self) {
         println!("SER Header Values:");
         println!("File Id: {}", self.file_id);
@@ -147,31 +138,34 @@ impl SerFile {
         println!("Date/Time: {:?}", self.date_time);
         println!("Date/Time UTC: {:?}", self.date_time_utc);
         println!("Total File Size: {}", self.total_size);
-        println!("Bytes per image: {}", self.image_width * self.image_height * (self.pixel_depth / 8));
+        println!(
+            "Bytes per image: {}",
+            self.image_width * self.image_height * (self.pixel_depth / 8)
+        );
     }
 
-    pub fn load_ser(file_path:&str) -> error::Result<SerFile> {
-
-        let mut file_reader = BinFileReader::new_as_endiness(&file_path.to_string(), Endian::LittleEndian);
-        let endiness = Endian::from_i32(file_reader.read_i32(22));  // 4 bytes, start at 22
+    pub fn load_ser(file_path: &str) -> error::Result<SerFile> {
+        let mut file_reader =
+            BinFileReader::new_as_endiness(&file_path.to_string(), Endian::LittleEndian);
+        let endiness = Endian::from_i32(file_reader.read_i32(22)); // 4 bytes, start at 22
         file_reader.set_endiness(endiness);
 
         let ser = SerFile {
-            file_id: file_reader.read_string(0, 14),                               // 14 bytes
-            camera_series_id: file_reader.read_i32(14),                            // 4 bytes, start at 14
-            color_id: ColorFormatId::from_i32(file_reader.read_i32(18)),           // 4 bytes, start at 18                   
-            image_width: file_reader.read_i32(26) as usize,                        // 4 bytes, start at 26
-            image_height: file_reader.read_i32(30) as usize,                       // 4 bytes, start at 30
-            pixel_depth: file_reader.read_i32(34) as usize,                        // 4 bytes, start at 34
-            frame_count: file_reader.read_i32(38) as usize,                        // 4 bytes, start at 38
-            observer: file_reader.read_string(42, 40),                             // 40 bytes, start at 42
-            instrument: file_reader.read_string(82, 40),                           // 40 bytes, start at 82
-            telescope: file_reader.read_string(122, 40),                           // 40 bytes, start at 122
-            date_time: timestamp::TimeStamp::from_u64(file_reader.read_u64(162)),      // 8 bytes, start at 162
-            date_time_utc: timestamp::TimeStamp::from_u64(file_reader.read_u64(170)),  // 8 bytes, start at 170
+            file_id: file_reader.read_string(0, 14),    // 14 bytes
+            camera_series_id: file_reader.read_i32(14), // 4 bytes, start at 14
+            color_id: ColorFormatId::from_i32(file_reader.read_i32(18)), // 4 bytes, start at 18
+            image_width: file_reader.read_i32(26) as usize, // 4 bytes, start at 26
+            image_height: file_reader.read_i32(30) as usize, // 4 bytes, start at 30
+            pixel_depth: file_reader.read_i32(34) as usize, // 4 bytes, start at 34
+            frame_count: file_reader.read_i32(38) as usize, // 4 bytes, start at 38
+            observer: file_reader.read_string(42, 40),  // 40 bytes, start at 42
+            instrument: file_reader.read_string(82, 40), // 40 bytes, start at 82
+            telescope: file_reader.read_string(122, 40), // 40 bytes, start at 122
+            date_time: timestamp::TimeStamp::from_u64(file_reader.read_u64(162)), // 8 bytes, start at 162
+            date_time_utc: timestamp::TimeStamp::from_u64(file_reader.read_u64(170)), // 8 bytes, start at 170
             total_size: file_reader.len(),
             file_reader: file_reader,
-            source_file: file_path.to_string()
+            source_file: file_path.to_string(),
         };
 
         if print::is_verbose() {
@@ -185,7 +179,7 @@ impl SerFile {
         self.image_width * self.image_height * (self.pixel_depth / 8)
     }
 
-    pub fn image_frame_start_index(&self, frame_num:usize) -> usize {
+    pub fn image_frame_start_index(&self, frame_num: usize) -> usize {
         HEADER_SIZE_BYTES + (self.image_frame_size_bytes() * frame_num)
     }
 
@@ -198,7 +192,7 @@ impl SerFile {
                 (self.image_frame_size_bytes() * self.frame_count) // Frames
     }
 
-    pub fn timestamp_start_index(&self, frame_num:usize) -> usize {
+    pub fn timestamp_start_index(&self, frame_num: usize) -> usize {
         let block_start = self.timestamp_block_start_index();
         block_start + (frame_num * TIMESTAMP_SIZE_BYTES)
     }
@@ -216,22 +210,22 @@ impl SerFile {
         assert_eq!(self.total_size, expected_size);
     }
 
-
-    pub fn get_frame_timestamp(&self, frame_num:usize) -> error::Result<u64> {
+    pub fn get_frame_timestamp(&self, frame_num: usize) -> error::Result<u64> {
         if frame_num >= self.frame_count {
             return Err("Frame number out of range");
         }
 
-        if ! self.has_timestamps() {
+        if !self.has_timestamps() {
             return Ok(0);
         }
 
         let timestamp_start_index = self.timestamp_start_index(frame_num);
-        Ok(self.file_reader.read_u64_with_endiness(timestamp_start_index, Endian::NativeEndian))
+        Ok(self
+            .file_reader
+            .read_u64_with_endiness(timestamp_start_index, Endian::NativeEndian))
     }
 
-    pub fn get_frame(&self, frame_num:usize) -> error::Result<SerFrame> {
-
+    pub fn get_frame(&self, frame_num: usize) -> error::Result<SerFrame> {
         if frame_num >= self.frame_count {
             return Err("Frame number out of range");
         }
@@ -239,22 +233,30 @@ impl SerFile {
         let image_frame_size_bytes = self.image_frame_size_bytes();
         let image_frame_start_index = self.image_frame_start_index(frame_num);
 
-        vprintln!("Extracting image frame #{} of {} from {}. Size {} at byte index {}", frame_num, self.frame_count, self.source_file, image_frame_size_bytes, image_frame_start_index);
+        vprintln!(
+            "Extracting image frame #{} of {} from {}. Size {} at byte index {}",
+            frame_num,
+            self.frame_count,
+            self.source_file,
+            image_frame_size_bytes,
+            image_frame_start_index
+        );
 
-        let bytes = self.file_reader.read_bytes(image_frame_start_index, image_frame_size_bytes);
+        let bytes = self
+            .file_reader
+            .read_bytes(image_frame_start_index, image_frame_size_bytes);
 
-        let mut values:Vec<f32> = Vec::with_capacity(self.image_width * self.image_height);
+        let mut values: Vec<f32> = Vec::with_capacity(self.image_width * self.image_height);
         values.resize(self.image_width * self.image_height, 0.0);
 
         let bytes_per_pixel = self.pixel_depth / 8;
         for y in 0..self.image_height {
             for x in 0..self.image_width {
-                
                 let pixel_start = (x + (y * self.image_width)) * bytes_per_pixel;
-                let pixel_value:f32;
+                let pixel_value: f32;
 
                 if self.pixel_depth == 8 {
-                    let pixel_bytes : u8 = bytes[pixel_start];
+                    let pixel_bytes: u8 = bytes[pixel_start];
                     pixel_value = pixel_bytes as f32;
                 } else if self.pixel_depth == 16 {
                     pixel_value = self.file_reader.read_u16(pixel_start) as f32;
@@ -265,37 +267,35 @@ impl SerFile {
                 values[x + (y * self.image_width)] = pixel_value;
             }
         }
-        
-        let frame_buffer = imagebuffer::ImageBuffer::from_vec_as_mode(&values, 
-                                                                        self.image_width, 
-                                                                        self.image_height,
-                                                                        match self.pixel_depth {
-                                                                            8 => ImageMode::U8BIT,
-                                                                            _ => ImageMode::U16BIT
-                                                                        }).expect("Failed to allocate image buffer");
+
+        let frame_buffer = imagebuffer::ImageBuffer::from_vec_as_mode(
+            &values,
+            self.image_width,
+            self.image_height,
+            match self.pixel_depth {
+                8 => ImageMode::U8BIT,
+                _ => ImageMode::U16BIT,
+            },
+        )
+        .expect("Failed to allocate image buffer");
 
         match self.color_id {
-            ColorFormatId::Mono => {
-                Ok(
-                    SerFrame::new(
-                        &frame_buffer,
-                        self.get_frame_timestamp(frame_num).expect("Failed to extract frame timestamp")
-                    )
-                )
-            },
+            ColorFormatId::Mono => Ok(SerFrame::new(
+                &frame_buffer,
+                self.get_frame_timestamp(frame_num)
+                    .expect("Failed to extract frame timestamp"),
+            )),
             ColorFormatId::BayerRggb => {
                 let debayered = debayer::debayer(&frame_buffer).unwrap();
-                Ok(
-                    SerFrame::new_rgb(
-                        debayered,
-                        self.get_frame_timestamp(frame_num).expect("Failed to extract frame timestamp")
-                    )
-                )
-            },
+                Ok(SerFrame::new_rgb(
+                    debayered,
+                    self.get_frame_timestamp(frame_num)
+                        .expect("Failed to extract frame timestamp"),
+                ))
+            }
             _ => {
                 panic!("Unsupported color mode: {:?}", self.color_id);
             }
         }
     }
-
 }

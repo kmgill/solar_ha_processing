@@ -1,4 +1,3 @@
-
 use solhat::print;
 mod subs;
 use subs::runnable::RunnableSubcommand;
@@ -8,10 +7,7 @@ use subs::*;
 // use std::path::PathBuf;
 
 extern crate wild;
-use clap::{
-    Parser, 
-    Subcommand
-};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[clap(name = "solha")]
@@ -36,7 +32,7 @@ enum SolHa {
     SerInfo(serinfo::SerInfo),
     Subtract(subtract::Subtract),
     LdCorrect(ldcorrect::LdCorrect),
-    ThreshTest(threshtest::ThreshTest)
+    ThreshTest(threshtest::ThreshTest),
 }
 
 fn main() {
@@ -49,37 +45,36 @@ fn main() {
     match args.command {
         SolHa::Add(args) => {
             args.run();
-        },
+        }
         SolHa::Composite(args) => {
             args.run();
-        },
+        }
         SolHa::ExtractFrame(args) => {
             args.run();
-        },
+        }
         SolHa::Extract(args) => {
             args.run();
-        },
+        }
         SolHa::FrameStats(args) => {
             args.run();
-        },
+        }
         SolHa::Mean(args) => {
             args.run();
-        },
+        }
         SolHa::Process(args) => {
             args.run();
-        },
+        }
         SolHa::SerInfo(args) => {
             args.run();
-        },
+        }
         SolHa::Subtract(args) => {
             args.run();
-        },
+        }
         SolHa::LdCorrect(args) => {
             args.run();
-        },
+        }
         SolHa::ThreshTest(args) => {
             args.run();
         }
-
     };
 }

@@ -1,53 +1,45 @@
+use crate::{path, ser, vprintln};
 
-use crate::{
-    ser,
-    path,
-    vprintln
-};
-
-use sciimg::{
-    error,
-    enums::ImageMode,
-    rgbimage
-};
+use sciimg::{enums::ImageMode, error, rgbimage};
 
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
-
-pub fn build_mean_buffer(ser_file_path:&str) -> error::Result<rgbimage::RgbImage> {
-    if ! path::file_exists(ser_file_path) {
+pub fn build_mean_buffer(ser_file_path: &str) -> error::Result<rgbimage::RgbImage> {
+    if !path::file_exists(ser_file_path) {
         return Err("File not found");
     }
 
     let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Failed to load SER file");
-    
+
     let num_bands = match ser_file.color_id {
         ser::ColorFormatId::Mono => 1,
-        _ => 3
+        _ => 3,
     };
 
     rgbimage::RgbImage::new_with_bands(
-        ser_file.image_width, 
+        ser_file.image_width,
         ser_file.image_height,
         num_bands,
         match ser_file.pixel_depth {
             8 => ImageMode::U8BIT,
-            _ => ImageMode::U16BIT
-        }
+            _ => ImageMode::U16BIT,
+        },
     )
 }
 
 // Computes a simple mean stack of frames across a list of ser files.
-pub fn compute_mean(ser_files:&Vec<&str>, _skip_glitch_frames:bool) -> error::Result<rgbimage::RgbImage> {
-
+pub fn compute_mean(
+    ser_files: &Vec<&str>,
+    _skip_glitch_frames: bool,
+) -> error::Result<rgbimage::RgbImage> {
     let mut mean_buffer = build_mean_buffer(ser_files[0]).unwrap();
     let buffer_mtx = Arc::new(Mutex::new(&mut mean_buffer));
 
     let cnt_mtx = Arc::new(Mutex::new(0));
 
     for ser_file_path in ser_files {
-        if ! path::file_exists(ser_file_path) {
+        if !path::file_exists(ser_file_path) {
             return Err("File not found");
         }
 
@@ -71,7 +63,12 @@ pub fn compute_mean(ser_files:&Vec<&str>, _skip_glitch_frames:bool) -> error::Re
             mean_buffer.apply_weight_on_band(1.0 / *cnt as f32, band);
         }
         let (framemin, framemax) = mean_buffer.get_min_max_all_channel();
-        vprintln!("    Stack Min/Max : {}, {} ({} images)", framemin, framemax, cnt);
+        vprintln!(
+            "    Stack Min/Max : {}, {} ({} images)",
+            framemin,
+            framemax,
+            cnt
+        );
         Ok(mean_buffer)
     } else {
         eprintln!("No files used");

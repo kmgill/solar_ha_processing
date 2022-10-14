@@ -914,9 +914,9 @@ dependencies = [
 
 [[package]]
 name = "sciimg"
-version = "0.3.4"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "329474e69e4f0e40b257b573ec5f900f746a1c5f14b0042b72c695f57865d259"
+checksum = "a4dd6a4d8ea76cfa39e78bae3bf92388f346e78386b3e565f302164446daf634"
 dependencies = [
  "chrono",
  "image",

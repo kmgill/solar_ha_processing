@@ -1,13 +1,14 @@
-use crate::{
-    vprintln
-};
+use crate::vprintln;
 
 use sciimg::prelude::*;
 use sciimg::Dn;
 
-pub fn threshtest(frame:&RgbImage, threshold:Dn) -> ImageBuffer {
-
-    vprintln!("Creating test visualization buffer of size {}x{}", frame.width, frame.height);
+pub fn threshtest(frame: &RgbImage, threshold: Dn) -> ImageBuffer {
+    vprintln!(
+        "Creating test visualization buffer of size {}x{}",
+        frame.width,
+        frame.height
+    );
     let mut out_img = ImageBuffer::new_with_fill(frame.width, frame.height, 0.0).unwrap();
 
     vprintln!("Checking threshold value {} across first frame", threshold);

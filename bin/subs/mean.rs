@@ -1,29 +1,26 @@
-
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{
-    path,
-    vprintln,
-    mean
-};
+use solhat::{mean, path, vprintln};
 
 use std::process;
 
 #[derive(clap::Args)]
 #[clap(author, version, about = "Compute mean of images", long_about = None)]
 pub struct Mean {
-    #[clap(long, short,  help = "Input ser file", multiple_values(false))]
+    #[clap(long, short, help = "Input ser file", multiple_values(false))]
     input_file: String,
 
     #[clap(long, short, help = "Output image")]
     output: String,
-}   
-
+}
 
 impl RunnableSubcommand for Mean {
     fn run(&self) {
-        if ! path::parent_exists_and_writable(&self.output.as_str()) {
-            eprintln!("Error: Output parent directory does not exist or is unwritable: {}", path::get_parent(&self.output.as_str()));
+        if !path::parent_exists_and_writable(&self.output.as_str()) {
+            eprintln!(
+                "Error: Output parent directory does not exist or is unwritable: {}",
+                path::get_parent(&self.output.as_str())
+            );
             process::exit(2);
         }
 
