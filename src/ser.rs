@@ -242,22 +242,18 @@ impl SerFile {
             image_frame_start_index
         );
 
-        let bytes = self
-            .file_reader
-            .read_bytes(image_frame_start_index, image_frame_size_bytes);
-
         let mut values: Vec<f32> = Vec::with_capacity(self.image_width * self.image_height);
         values.resize(self.image_width * self.image_height, 0.0);
 
         let bytes_per_pixel = self.pixel_depth / 8;
         for y in 0..self.image_height {
             for x in 0..self.image_width {
-                let pixel_start = (x + (y * self.image_width)) * bytes_per_pixel;
+                let pixel_start =
+                    (x + (y * self.image_width)) * bytes_per_pixel + image_frame_start_index;
                 let pixel_value: f32;
 
                 if self.pixel_depth == 8 {
-                    let pixel_bytes: u8 = bytes[pixel_start];
-                    pixel_value = pixel_bytes as f32;
+                    pixel_value = self.file_reader.read_u8(pixel_start) as f32;
                 } else if self.pixel_depth == 16 {
                     pixel_value = self.file_reader.read_u16(pixel_start) as f32;
                 } else {
