@@ -28,7 +28,7 @@ CROP_WIDTH=2600
 CROP_HEIGHT=2600
 
 check_file=`ls -1 $DATAROOT/$MOON_ROOT/*/*ser | head -n 1`
-BIT_DEPTH=`ser_info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
+BIT_DEPTH=`solha ser-info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
 
 FRAME_LIMIT=2000
@@ -36,8 +36,8 @@ FRAME_LIMIT=2000
 DATA_TS=`ls $DATAROOT/$MOON_ROOT/ | tail -n 1`
 
 
-MOON_THRESH=15000
-MOON_SIGMA_MIN=370.0
+MOON_THRESH=10000
+MOON_SIGMA_MIN=280.0
 MOON_SIGMA_MAX=5000.0
 MOON_TOP_PCT=90
 
@@ -51,13 +51,26 @@ echo Version Text: $VERSION
 echo
 echo Output Moon: $DATAROOT/Moon_${DATA_TS}${VERSION}.png
 
+DARK_FRAME=$DATAROOT/Dark_${DATA_TS}${VERSION}.png
+if [ ! -f $DARK_FRAME ]; then
+    echo Creating calibration frames...
+    solha -v mean -i $DATAROOT/$MOON_DARK_ROOT/*/*ser -o $DARK_FRAME
+    if [ ! -f $DARK_FRAME -o $? -ne 0 ]; then
+        echo Error: Failed to generate dark frame
+    fi
+fi
+
+echo Generating threshold test frame...
+solha -v thresh-test -i $DATAROOT/$MOON_ROOT/*/*ser \
+                -d $DARK_FRAME \
+                -o $DATAROOT/ThreshTest_${DATA_TS}${VERSION}.png \
+                -t $MOON_THRESH
+
 echo "Starting Moon Processing..."
-process_ha -v -i $DATAROOT/$MOON_ROOT/*/Moon*ser \
-                -d $DATAROOT/$MOON_DARK_ROOT/*/Moon*ser \
+solha -v process -i $DATAROOT/$MOON_ROOT/*/Moon*ser \
+                -d $DARK_FRAME \
                 -o $DATAROOT/Moon_RGB_${DATA_TS}${VERSION}.png \
                 -t $MOON_THRESH \
-                -w $CROP_WIDTH \
-                -h $CROP_HEIGHT \
                 -l $LOC_LATITUDE \
                 -L $LOC_LONGITUDE \
                 -q $MOON_TOP_PCT \
