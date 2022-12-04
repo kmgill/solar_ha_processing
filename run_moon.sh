@@ -40,6 +40,7 @@ MOON_THRESH=10000
 MOON_SIGMA_MIN=280.0
 MOON_SIGMA_MAX=5000.0
 MOON_TOP_PCT=90
+DRIZZLE_SCALE=1.5
 
 echo Data Root: $DATAROOT
 echo Moon Root: $DATAROOT/$MOON_ROOT
@@ -73,9 +74,12 @@ solha -v process -i $DATAROOT/$MOON_ROOT/*/Moon*ser \
                 -t $MOON_THRESH \
                 -l $LOC_LATITUDE \
                 -L $LOC_LONGITUDE \
+                -w $CROP_WIDTH \
+                -H $CROP_HEIGHT \
                 -q $MOON_TOP_PCT \
                 -S $MOON_SIGMA_MAX \
                 -s $MOON_SIGMA_MIN \
                 -n $FRAME_LIMIT \
                 -T moon \
+                -u $DRIZZLE_SCALE \
                 -P $MOON_MAX_SCALE 2>&1 | tee $DATAROOT/moon_${DATA_TS}${VERSION}.log
