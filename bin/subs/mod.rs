@@ -5,6 +5,7 @@ pub mod extractframe;
 pub mod framestats;
 pub mod ldcorrect;
 pub mod mean;
+pub mod median;
 pub mod process;
 pub mod runnable;
 pub mod serinfo;

@@ -60,7 +60,7 @@ if [ $BIT_DEPTH -eq 8 ]; then
     PHOTO_TOP_PCT=30
 elif [ $BIT_DEPTH -eq 16 ]; then
     # 16 Bit
-    CHROME_THRESH=20560
+    CHROME_THRESH=14560
     CHROME_SIGMA_MIN=349
     CHROME_SIGMA_MAX=1285
     CHROME_TOP_PCT=40
@@ -186,6 +186,7 @@ if [ $? -ne 0 ]; then
     echo Warning: Failed to generate threshold test image
 fi
  
+
 echo "Starting Chromosphere Processing..."
 solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -d $DARK_FRAME \
@@ -213,6 +214,11 @@ solha -v ld-correct -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
                     -l 0.56 \
                     -o $DATAROOT/Sun_Chrome_${DATA_TS}_ldcorrected${VERSION}.png  2>&1 | tee $DATAROOT/chrome_ldcorrection_${DATA_TS}${VERSION}.log
 
+echo "Creating Invert Composited Image..."
+solha -v composite -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
+                    -r 770 \
+                    -o $DATAROOT/Sun_Chrome_${DATA_TS}_composite${VERSION}.png  2>&1 | tee $DATAROOT/chrome_composite_${DATA_TS}${VERSION}.log
+
 exit
 # if [ $HAS_PROM -eq 1 ]; then
 #     echo "Starting Prominance Processing..."
@@ -236,13 +242,6 @@ exit
 #                     -P $PROM_MAX_SCALE 2>&1 | tee $DATAROOT/prominance_${DATA_TS}${VERSION}.log
 #                     #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 
-
-#     echo "Assembling Chrome/Prom Composite..."
-#     solha -v composite -i $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png \
-#             $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
-#             -o $DATAROOT/Sun_Composite_${DATA_TS}${VERSION}.png \
-#             -s 0.7 \
-#              2>&1 | tee $DATAROOT/composite_${DATA_TS}${VERSION}.log
 # fi
 
 if [ $HAS_PHOTO -eq 1 ]; then

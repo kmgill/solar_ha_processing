@@ -10,6 +10,7 @@ pub mod guassianblur;
 pub mod ldcorrect;
 pub mod lunar;
 pub mod mean;
+pub mod medianblur;
 pub mod parallacticangle;
 pub mod params;
 pub mod path;
