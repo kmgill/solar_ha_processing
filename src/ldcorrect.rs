@@ -100,6 +100,8 @@ pub fn limb_darkening_correction(
     output_file: &String,
     radius_pixels: usize,
     ld_coefficients: &Vec<f64>,
+    composite_gradient_margin: f64,
+    inverted_chromosphere: bool,
 ) -> error::Result<&'static str> {
     if !path::file_exists(image_file) {
         eprintln!("ERROR: File not found: {}", image_file);
@@ -114,7 +116,13 @@ pub fn limb_darkening_correction(
     vprintln!("Opening input file: {}", image_file);
     let img = RgbImage::open16(image_file).unwrap();
 
-    match limb_darkening_correction_on_image(&img, radius_pixels, ld_coefficients) {
+    match limb_darkening_correction_on_image(
+        &img,
+        radius_pixels,
+        ld_coefficients,
+        composite_gradient_margin,
+        inverted_chromosphere,
+    ) {
         Ok(corrected_output) => {
             vprintln!("Writing corrected image to {}", output_file);
             corrected_output.save(output_file);
@@ -128,6 +136,8 @@ pub fn limb_darkening_correction_on_image(
     img: &RgbImage,
     radius_pixels: usize,
     ld_coefficients: &Vec<f64>,
+    composite_gradient_margin: f64,
+    inverted_chromosphere: bool,
 ) -> error::Result<RgbImage> {
     vprintln!(
         "Generating output buffer of size {}x{}",
@@ -200,6 +210,9 @@ pub fn limb_darkening_correction_on_image(
         }
     }
 
+    let (_, data_max) = img.get_min_max_all_channel();
+    vprintln!("Chromosphere inversion maximum: {}", data_max);
+
     vprintln!("Computing pixel corrections");
     for y in 0..img.height {
         for x in 0..img.width {
@@ -212,22 +225,35 @@ pub fn limb_darkening_correction_on_image(
                 // Observed value of the pixel
                 let i = img.get_band(band).get(x, y).unwrap();
 
-                if r > radius_pixels as f64 {
+                let model_intensity = center_intensities[band]
+                    * (1.0 - coefficients[band] * (1.0 - ((a * a - r * r) / (a * a)).sqrt()));
+                let corrected_u =
+                    (center_intensities[band] - model_intensity) / center_intensities[band];
+                let corrected = center_intensities[band]
+                    * (corrected_u * (1.0 - ((a * a - r * r) / (a * a)).sqrt()))
+                    + i as f64;
+
+                let corrected_adjusted = if inverted_chromosphere {
+                    data_max - corrected as Dn
+                } else {
+                    corrected as Dn
+                };
+
+                let final_value = if r > radius_pixels as f64 {
                     // If the pixel is outside of the solar radius, we just use
                     // the uncorrected pixel value
-                    corrected_output.put(x, y, i, band);
+                    i as Dn
+                } else if radius_pixels as f64 - r <= composite_gradient_margin {
+                    // A linear-interpolated gradiant transition
+                    let frac =
+                        ((radius_pixels as Dn - r as Dn) / composite_gradient_margin as Dn) as Dn;
+                    corrected_adjusted as Dn * frac + (1.0 - frac) * i
                 } else {
                     // Using the same coefficient for multiple wavelengths is incorrect.
-                    let model_intensity = center_intensities[band]
-                        * (1.0 - coefficients[band] * (1.0 - ((a * a - r * r) / (a * a)).sqrt()));
-                    let corrected_u =
-                        (center_intensities[band] - model_intensity) / center_intensities[band];
-                    let corrected = center_intensities[band]
-                        * (corrected_u * (1.0 - ((a * a - r * r) / (a * a)).sqrt()))
-                        + i as f64;
+                    corrected_adjusted as Dn
+                };
 
-                    corrected_output.put(x, y, corrected as Dn, band);
-                }
+                corrected_output.put(x, y, final_value, band);
             }
         }
     }
