@@ -7,6 +7,7 @@ pub mod enums;
 pub mod error;
 pub mod fpmap;
 pub mod guassianblur;
+pub mod imagerot;
 pub mod ldcorrect;
 pub mod lunar;
 pub mod mean;

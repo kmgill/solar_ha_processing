@@ -2,10 +2,11 @@ use crate::{
     constants,
     drizzle::{self, BilinearDrizzle},
     enums::Target,
-    fpmap, lunar, mean, ok, parallacticangle, path, ser, solar, timestamp, vprintln,
+    fpmap, imagerot, lunar, mean, ok, parallacticangle, path, ser, solar, timestamp, vprintln,
 };
 
 use rayon::prelude::*;
+use sciimg::imagebuffer::Offset;
 use sciimg::{error, quality, rgbimage};
 use std::cmp::Ordering;
 
@@ -44,6 +45,27 @@ impl PartialEq for FrameRecord {
 }
 
 impl Eq for FrameRecord {}
+
+trait CenterOfMass {
+    fn calc_center_of_mass_offset_with_rotation(
+        &self,
+        threshold: f32,
+        rotation: f32,
+        band: usize,
+    ) -> Offset;
+}
+
+impl CenterOfMass for rgbimage::RgbImage {
+    fn calc_center_of_mass_offset_with_rotation(
+        &self,
+        threshold: f32,
+        rotation: f32,
+        band: usize,
+    ) -> Offset {
+        let rotated = imagerot::rotate(&self.get_band(band), rotation).unwrap();
+        rotated.calc_center_of_mass_offset(threshold)
+    }
+}
 
 struct ProcessContext {
     pub frame_records: Vec<FrameRecord>,

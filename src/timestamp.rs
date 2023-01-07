@@ -118,12 +118,11 @@ impl TimeStamp {
     }
 
     pub fn to_unix_timestamp(&self) -> i64 {
-        let date_time: NaiveDateTime = NaiveDate::from_ymd(
-            self.year,
-            self.month as u32,
-            self.day as u32,
-        )
-        .and_hms(self.hour as u32, self.minute as u32, self.second as u32);
+        let date_time: NaiveDateTime =
+            NaiveDate::from_ymd_opt(self.year, self.month as u32, self.day as u32)
+                .unwrap()
+                .and_hms_opt(self.hour as u32, self.minute as u32, self.second as u32)
+                .unwrap();
         date_time.timestamp()
     }
 }
