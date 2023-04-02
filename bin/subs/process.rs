@@ -1,7 +1,7 @@
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{drizzle, enums::Target, path, processing};
-
+use sciimg::path;
+use solhat::{drizzle, enums::Target, processing};
 use std::process;
 
 #[derive(clap::Args)]

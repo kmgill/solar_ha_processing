@@ -2,8 +2,9 @@
 
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{path, processing::HaProcessing, ser, threshtest, vprintln};
+use solhat::{processing::HaProcessing, ser, threshtest, vprintln};
 
+use sciimg::path;
 use sciimg::prelude::*;
 use std::process;
 

@@ -1,8 +1,9 @@
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{medianblur, path, vprintln};
-
 use sciimg::image::Image;
+use sciimg::medianblur;
+use sciimg::path;
+use solhat::vprintln;
 
 use std::process;
 

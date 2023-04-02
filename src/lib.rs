@@ -1,20 +1,14 @@
 extern crate clap;
 
-pub mod binfilereader;
 pub mod constants;
 pub mod drizzle;
 pub mod enums;
-pub mod error;
 pub mod fpmap;
-pub mod guassianblur;
-pub mod imagerot;
 pub mod ldcorrect;
 pub mod lunar;
 pub mod mean;
-pub mod medianblur;
 pub mod parallacticangle;
 pub mod params;
-pub mod path;
 pub mod point;
 pub mod print;
 pub mod processing;
@@ -22,5 +16,4 @@ pub mod ser;
 pub mod solar;
 pub mod threshtest;
 pub mod timestamp;
-pub mod unsharp;
 pub mod util;

@@ -1,6 +1,6 @@
-use crate::{path, ser, vprintln};
+use crate::{ser, vprintln};
 
-use sciimg::{enums::ImageMode, error, image};
+use sciimg::{enums::ImageMode, error, image, path};
 
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};

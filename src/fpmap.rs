@@ -1,5 +1,7 @@
-use crate::{constants, error, ok, path, ser, vprintln};
-
+use crate::{ser, vprintln};
+use sciimg::error;
+use sciimg::ok;
+use sciimg::path;
 use std::collections::HashMap;
 
 /** file pointer map */

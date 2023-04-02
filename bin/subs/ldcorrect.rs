@@ -1,7 +1,7 @@
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{ldcorrect, path, vprintln};
-
+use sciimg::path;
+use solhat::{ldcorrect, vprintln};
 use std::process;
 
 #[derive(clap::Args)]

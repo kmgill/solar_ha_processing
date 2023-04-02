@@ -1,8 +1,8 @@
 // Technical specification: http://www.grischa-hahn.homepage.t-online.de/astro/ser/SER%20Doc%20V3b.pdf
 
-use crate::{binfilereader::*, print, timestamp, vprintln};
+use crate::{print, timestamp, vprintln};
 
-use sciimg::{debayer, enums::ImageMode, error, image, imagebuffer};
+use sciimg::{binfilereader::*, debayer, enums::ImageMode, error, image, imagebuffer};
 
 const HEADER_SIZE_BYTES: usize = 178;
 const TIMESTAMP_SIZE_BYTES: usize = 8;
@@ -37,17 +37,6 @@ impl ColorFormatId {
             100 => ColorFormatId::Rgb,
             101 => ColorFormatId::Bgr,
             _ => panic!("Invalid color format enum value: {}", v),
-        }
-    }
-}
-
-impl Endian {
-    pub fn from_i32(v: i32) -> Endian {
-        match v {
-            1 => Endian::BigEndian,
-            0 => Endian::LittleEndian,
-            100 => Endian::NativeEndian,
-            _ => panic!("Invalid endian enum value"),
         }
     }
 }

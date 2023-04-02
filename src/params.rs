@@ -4,7 +4,7 @@ use std::io::Read;
 //use serde_derive::Deserialize;
 use serde::Deserialize;
 
-use crate::path;
+use sciimg::path;
 
 // threshold = 20560
 // sigma_min = 1.23

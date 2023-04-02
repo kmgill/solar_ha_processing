@@ -1,4 +1,5 @@
-use solhat::{path, ser, timestamp};
+use sciimg::path;
+use solhat::{ser, timestamp};
 
 #[test]
 fn test_load_ser() {

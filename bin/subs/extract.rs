@@ -1,8 +1,8 @@
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{path, processing, ser, vprintln};
+use solhat::{processing, ser, vprintln};
 
-use sciimg::{image, quality};
+use sciimg::{image, path, quality};
 
 use rayon::prelude::*;
 use std::fs;

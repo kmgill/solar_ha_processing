@@ -1,4 +1,4 @@
-use crate::path;
+use sciimg::path;
 
 use std::str::FromStr;
 

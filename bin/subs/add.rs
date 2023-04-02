@@ -1,8 +1,8 @@
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{path, vprintln};
+use solhat::vprintln;
 
-use sciimg::{enums::ImageMode, imagebuffer};
+use sciimg::{enums::ImageMode, imagebuffer, path};
 
 use std::process;
 

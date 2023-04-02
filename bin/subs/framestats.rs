@@ -1,9 +1,9 @@
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{enums::Target, lunar, parallacticangle, path, ser, solar, vprintln};
+use solhat::{enums::Target, lunar, parallacticangle, ser, solar, vprintln};
 
+use sciimg::path;
 use sciimg::quality;
-
 use std::process;
 
 #[derive(clap::Args)]

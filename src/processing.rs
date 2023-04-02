@@ -1,13 +1,12 @@
 use crate::{
-    constants,
     drizzle::{self, BilinearDrizzle},
     enums::Target,
-    fpmap, imagerot, lunar, mean, ok, parallacticangle, path, ser, solar, timestamp, vprintln,
+    fpmap, lunar, mean, parallacticangle, ser, solar, timestamp, vprintln,
 };
 
 use rayon::prelude::*;
 use sciimg::imagebuffer::Offset;
-use sciimg::{error, image, quality};
+use sciimg::{error, image, imagerot, ok, path, quality};
 use std::cmp::Ordering;
 
 const UNKNOWN_ROTATION: f64 = -99999.0;

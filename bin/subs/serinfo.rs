@@ -1,6 +1,7 @@
 use crate::subs::runnable::RunnableSubcommand;
 
-use solhat::{path, ser};
+use sciimg::path;
+use solhat::ser;
 
 #[derive(clap::Args)]
 #[clap(author, version, about = "SER file details", long_about = None)]

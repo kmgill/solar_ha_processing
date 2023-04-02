@@ -1,4 +1,4 @@
-use solhat::binfilereader::*;
+use sciimg::binfilereader::*;
 
 #[test]
 fn test_on_ser_file() {
