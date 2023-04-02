@@ -102,7 +102,7 @@ impl RunnableSubcommand for Process {
         }
 
         let target = match &self.target {
-            Some(t) => match Target::from(&t) {
+            Some(t) => match Target::from(t) {
                 Some(t) => t,
                 None => {
                     eprintln!("Error: Unrecognized target value: {}", t);
@@ -112,20 +112,9 @@ impl RunnableSubcommand for Process {
             None => Target::Sun,
         };
 
-        let obj_detect_threshold = match self.threshold {
-            Some(t) => t,
-            None => 40.0,
-        };
-
-        let crop_width = match self.width {
-            Some(w) => w,
-            None => 0,
-        };
-
-        let crop_height = match self.height {
-            Some(h) => h,
-            None => 0,
-        };
+        let obj_detect_threshold = self.threshold.unwrap_or(40.0);
+        let crop_width = self.width.unwrap_or(0);
+        let crop_height = self.height.unwrap_or(0);
 
         if crop_width == 0 && crop_height > 0 || crop_width > 0 && crop_height == 0 {
             eprintln!("Error: Both width and height need to be specified if any are");
@@ -134,7 +123,7 @@ impl RunnableSubcommand for Process {
 
         let flat_frame = match &self.flat {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Flat file not found: {}", f);
                 }
                 f.clone()
@@ -144,7 +133,7 @@ impl RunnableSubcommand for Process {
 
         let dark_frame = match &self.dark {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Dark file not found: {}", f);
                 }
                 f.clone()
@@ -154,7 +143,7 @@ impl RunnableSubcommand for Process {
 
         let dark_flat_frame = match &self.darkflat {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Dark flat file not found: {}", f);
                 }
                 f.clone()
@@ -164,7 +153,7 @@ impl RunnableSubcommand for Process {
 
         let mask_file = match &self.mask {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Mask file not found: {}", f);
                 }
                 f.clone()
@@ -172,30 +161,11 @@ impl RunnableSubcommand for Process {
             None => String::from(""),
         };
 
-        let red_scalar = match self.redweight {
-            Some(w) => w,
-            None => 1.0,
-        };
-
-        let green_scalar = match self.greenweight {
-            Some(w) => w,
-            None => 1.0,
-        };
-
-        let blue_scalar = match self.blueweight {
-            Some(w) => w,
-            None => 1.0,
-        };
-
-        let max_sigma = match self.maxsigma {
-            Some(m) => m,
-            None => 100000.0,
-        };
-
-        let min_sigma = match self.minsigma {
-            Some(m) => m,
-            None => 0.0,
-        };
+        let red_scalar = self.redweight.unwrap_or(1.0);
+        let green_scalar = self.greenweight.unwrap_or(1.0);
+        let blue_scalar = self.blueweight.unwrap_or(1.0);
+        let max_sigma = self.maxsigma.unwrap_or(1000000.0);
+        let min_sigma = self.minsigma.unwrap_or(0.0);
 
         let initial_rotation = self.rotation;
         let obs_latitude = self.latitude;
@@ -203,9 +173,7 @@ impl RunnableSubcommand for Process {
 
         let limit_top_pct = match self.quality {
             Some(p) => {
-                if p <= 0 {
-                    panic!("Error: Quality limit percentage cannot be zero or below");
-                } else if p > 100 {
+                if p > 100 {
                     panic!("Error: Quality limit percentage cannot exceed 100%");
                 } else {
                     p
@@ -214,10 +182,7 @@ impl RunnableSubcommand for Process {
             None => 100,
         };
 
-        let number_of_frames = match self.number_of_frames {
-            Some(n) => n,
-            None => 10000000,
-        };
+        let number_of_frames = self.number_of_frames.unwrap_or(10000000);
 
         let pct_of_max = match self.percentofmax {
             Some(p) => {

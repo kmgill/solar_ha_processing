@@ -50,7 +50,7 @@ impl TimeStamp {
         }
 
         for y in year..9999 {
-            year = y;
+            let year = y;
             let days_this_year = if TimeStamp::is_leap_year(year) {
                 366
             } else {
@@ -89,7 +89,7 @@ impl TimeStamp {
         TimeStamp {
             timestamp: ts_u64,
             year: year as i32,
-            month: month,
+            month,
             day: days_ts as i32 + 1,
             hour: hours as i32,
             minute: minutes as i32,

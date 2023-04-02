@@ -1,20 +1,13 @@
-
-
-use sciimg::{
-    imagebuffer,
-    enums::ImageMode,
-    error
-};
+use sciimg::{enums::ImageMode, error, imagebuffer};
 
 use image::Rgba;
 
-use imageproc::geometric_transformations::{
-    rotate_about_center,
-    Interpolation
-};
+use imageproc::geometric_transformations::{rotate_about_center, Interpolation};
 
-
-pub fn rotate_8(buffer:&imagebuffer::ImageBuffer, theta:f32) -> error::Result<imagebuffer::ImageBuffer> {
+pub fn rotate_8(
+    buffer: &imagebuffer::ImageBuffer,
+    theta: f32,
+) -> error::Result<imagebuffer::ImageBuffer> {
     let image = buffer.buffer_to_image_8bit();
     let default_pixel = Rgba([0, 0, 0, 0]);
     let rotated = rotate_about_center(&image, theta, Interpolation::Bicubic, default_pixel);
@@ -22,7 +15,10 @@ pub fn rotate_8(buffer:&imagebuffer::ImageBuffer, theta:f32) -> error::Result<im
     imagebuffer::ImageBuffer::from_image_u8(&rotated)
 }
 
-pub fn rotate_16(buffer:&imagebuffer::ImageBuffer, theta:f32) -> error::Result<imagebuffer::ImageBuffer> {
+pub fn rotate_16(
+    buffer: &imagebuffer::ImageBuffer,
+    theta: f32,
+) -> error::Result<imagebuffer::ImageBuffer> {
     let image = buffer.buffer_to_image_16bit();
     let default_pixel = Rgba([0, 0, 0, 0]);
     let rotated = rotate_about_center(&image, theta, Interpolation::Bicubic, default_pixel);
@@ -30,10 +26,13 @@ pub fn rotate_16(buffer:&imagebuffer::ImageBuffer, theta:f32) -> error::Result<i
     imagebuffer::ImageBuffer::from_image_u16(&rotated)
 }
 
-pub fn rotate(buffer:&imagebuffer::ImageBuffer, theta:f32) -> error::Result<imagebuffer::ImageBuffer> {
+pub fn rotate(
+    buffer: &imagebuffer::ImageBuffer,
+    theta: f32,
+) -> error::Result<imagebuffer::ImageBuffer> {
     match buffer.mode {
         ImageMode::U8BIT => rotate_8(buffer, theta),
         ImageMode::U16BIT => rotate_16(buffer, theta),
-        _ => panic!("Unexpected bit depth encountered!")
+        _ => panic!("Unexpected bit depth encountered!"),
     }
 }

@@ -14,7 +14,7 @@ pub fn from_az_dec_and_lat(a: f64, d: f64, f: f64) -> f64 {
         .asin()
         .to_degrees();
     if a < 180.0 {
-        pa = pa * -1.0;
+        pa *= -1.0;
     }
     pa
 }
@@ -26,7 +26,7 @@ pub fn from_lat_dec_and_zenith(f: f64, d: f64, z: f64, a: f64) -> f64 {
     .acos()
     .to_degrees();
     if a < 180.0 {
-        pa = pa * -1.0;
+        pa *= -1.0;
     }
     pa
 }
@@ -39,7 +39,7 @@ pub fn from_lat_zenith_azimuth_dec(f: f64, z: f64, a: f64, d: f64) -> f64 {
     .acos()
     .to_degrees();
     if a < 180.0 {
-        pa = pa * -1.0;
+        pa *= -1.0;
     }
     pa
 }
@@ -56,7 +56,7 @@ pub fn from_lat_azimuth_altitude(f: f64, a: f64, al: f64) -> f64 {
     .acos()
     .to_degrees();
     if a < 180.0 {
-        pa = pa * -1.0;
+        pa *= -1.0;
     }
     pa
 }

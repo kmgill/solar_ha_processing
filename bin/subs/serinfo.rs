@@ -11,7 +11,7 @@ pub struct SerInfo {
 
 impl RunnableSubcommand for SerInfo {
     fn run(&self) {
-        if path::file_exists(&self.input_file.as_str()) {
+        if path::file_exists(self.input_file.as_str()) {
             let ser_file =
                 ser::SerFile::load_ser(&self.input_file).expect("Unable to load SER file");
             ser_file.validate();

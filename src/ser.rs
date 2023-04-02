@@ -2,7 +2,7 @@
 
 use crate::{binfilereader::*, print, timestamp, vprintln};
 
-use sciimg::{debayer, enums::ImageMode, error, imagebuffer, rgbimage};
+use sciimg::{debayer, enums::ImageMode, error, image, imagebuffer};
 
 const HEADER_SIZE_BYTES: usize = 178;
 const TIMESTAMP_SIZE_BYTES: usize = 8;
@@ -56,7 +56,7 @@ impl Endian {
 // Frames block is frame_size * num_images
 // Frames block starts off at byte 178
 pub struct SerFrame {
-    pub buffer: rgbimage::RgbImage,
+    pub buffer: image::Image,
     pub timestamp: timestamp::TimeStamp,
 }
 
@@ -83,17 +83,17 @@ pub struct SerFile {
 
 impl SerFrame {
     pub fn new(single_band_buffer: &imagebuffer::ImageBuffer, timestamp: u64) -> SerFrame {
-        let mut buffer = rgbimage::RgbImage::new_with_bands(
+        let mut buffer = image::Image::new_with_bands(
             single_band_buffer.width,
             single_band_buffer.height,
             1,
             single_band_buffer.mode,
         )
         .unwrap();
-        buffer.add_to_each(&single_band_buffer);
+        buffer.add_to_each(single_band_buffer);
 
         SerFrame {
-            buffer: buffer,
+            buffer,
             timestamp: timestamp::TimeStamp::from_u64(timestamp),
         }
     }
@@ -104,15 +104,15 @@ impl SerFrame {
         b: &imagebuffer::ImageBuffer,
         timestamp: u64,
     ) -> SerFrame {
-        let buffer = rgbimage::RgbImage::new_from_buffers_rgb(&r, &g, &b, r.mode).unwrap();
+        let buffer = image::Image::new_from_buffers_rgb(r, g, b, r.mode).unwrap();
 
         SerFrame {
-            buffer: buffer,
+            buffer,
             timestamp: timestamp::TimeStamp::from_u64(timestamp),
         }
     }
 
-    pub fn new_rgb(rgb: rgbimage::RgbImage, timestamp: u64) -> SerFrame {
+    pub fn new_rgb(rgb: image::Image, timestamp: u64) -> SerFrame {
         SerFrame {
             buffer: rgb,
             timestamp: timestamp::TimeStamp::from_u64(timestamp),
@@ -164,7 +164,7 @@ impl SerFile {
             date_time: timestamp::TimeStamp::from_u64(file_reader.read_u64(162)), // 8 bytes, start at 162
             date_time_utc: timestamp::TimeStamp::from_u64(file_reader.read_u64(170)), // 8 bytes, start at 170
             total_size: file_reader.len(),
-            file_reader: file_reader,
+            file_reader,
             source_file: file_path.to_string(),
         };
 
@@ -282,7 +282,8 @@ impl SerFile {
                     .expect("Failed to extract frame timestamp"),
             )),
             ColorFormatId::BayerRggb => {
-                let debayered = debayer::debayer(&frame_buffer).unwrap();
+                let debayered =
+                    debayer::debayer(&frame_buffer, debayer::DebayerMethod::AMaZE).unwrap();
                 Ok(SerFrame::new_rgb(
                     debayered,
                     self.get_frame_timestamp(frame_num)

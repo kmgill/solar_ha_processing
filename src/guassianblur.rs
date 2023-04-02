@@ -1,8 +1,8 @@
 use crate::vprintln;
 use sciimg::error;
+use sciimg::image::Image;
 use sciimg::imagebuffer::ImageBuffer;
 use sciimg::max;
-use sciimg::rgbimage::RgbImage;
 use sciimg::Dn;
 use sciimg::DnVec;
 use sciimg::VecMath;
@@ -12,7 +12,7 @@ pub fn guassian_blur_nband(
     buffers: &Vec<ImageBuffer>,
     sigma: f32,
 ) -> error::Result<Vec<ImageBuffer>> {
-    if buffers.len() == 0 {
+    if buffers.is_empty() {
         return Err("No buffers provided");
     }
 
@@ -38,8 +38,8 @@ pub fn guassian_blur_nband(
     }
 
     // Normalize kernel
-    for i in 0..kernel.len() {
-        kernel[i] = kernel[i] / sum;
+    for (i, _) in kernel.clone().iter().enumerate() {
+        kernel[i] /= sum;
     }
 
     let mut out_buffers = buffers.clone();
@@ -61,10 +61,8 @@ pub fn guassian_blur_nband(
                 let kernel_value = kernel[(kernel_i + r) as usize];
 
                 for b in 0..buffers.len() {
-                    values[b] += out_buffers[b]
-                        .get(x - kernel_i as usize, y as usize)
-                        .unwrap()
-                        * kernel_value;
+                    values[b] +=
+                        out_buffers[b].get(x - kernel_i as usize, y).unwrap() * kernel_value;
                 }
             }
 
@@ -90,10 +88,8 @@ pub fn guassian_blur_nband(
 
                 let kernel_value = kernel[(kernel_i + r) as usize];
                 for b in 0..buffers.len() {
-                    values[b] += out_buffers[b]
-                        .get(x as usize, y - kernel_i as usize)
-                        .unwrap()
-                        * kernel_value;
+                    values[b] +=
+                        out_buffers[b].get(x, y - kernel_i as usize).unwrap() * kernel_value;
                 }
             }
 
@@ -109,7 +105,7 @@ pub trait RgbImageBlur {
     fn guassian_blur(&mut self, sigma: f32);
 }
 
-impl RgbImageBlur for RgbImage {
+impl RgbImageBlur for Image {
     fn guassian_blur(&mut self, sigma: f32) {
         let mut buffers = vec![];
         for b in 0..self.num_bands() {
@@ -118,7 +114,7 @@ impl RgbImageBlur for RgbImage {
 
         match guassian_blur_nband(&buffers, sigma) {
             Ok(buffers) => {
-                for b in 0..buffers.len() {
+                for (b, _) in buffers.iter().enumerate() {
                     self.set_band(&buffers[b], b);
                 }
             }

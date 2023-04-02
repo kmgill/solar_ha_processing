@@ -30,7 +30,7 @@ pub struct FrameStats {
 impl RunnableSubcommand for FrameStats {
     fn run(&self) {
         let target = match &self.target {
-            Some(t) => match Target::from(&t) {
+            Some(t) => match Target::from(t) {
                 Some(t) => t,
                 None => {
                     eprintln!("Error: Unrecognized target value: {}", t);

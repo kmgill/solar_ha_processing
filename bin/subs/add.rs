@@ -18,10 +18,10 @@ pub struct Add {
 
 impl RunnableSubcommand for Add {
     fn run(&self) {
-        if !path::parent_exists_and_writable(&self.output.as_str()) {
+        if !path::parent_exists_and_writable(self.output.as_str()) {
             eprintln!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
-                path::get_parent(&self.output.as_str())
+                path::get_parent(self.output.as_str())
             );
             process::exit(2);
         }
@@ -31,12 +31,12 @@ impl RunnableSubcommand for Add {
         self.input_files.iter().for_each(|input_file| {
             vprintln!("Loading input file {}", input_file);
 
-            if !path::file_exists(&input_file) {
+            if !path::file_exists(input_file) {
                 eprintln!("Error: Input file not found: {}", input_file);
                 process::exit(1);
             }
 
-            let input = imagebuffer::ImageBuffer::from_file(&input_file)
+            let input = imagebuffer::ImageBuffer::from_file(input_file)
                 .expect("Error: failed to load file");
 
             if composite.is_empty() {
@@ -47,6 +47,6 @@ impl RunnableSubcommand for Add {
         });
 
         vprintln!("Writing output file to {}", self.output);
-        composite.save(&self.output.as_str(), ImageMode::U16BIT);
+        composite.save(self.output.as_str(), ImageMode::U16BIT);
     }
 }

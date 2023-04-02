@@ -43,44 +43,44 @@ impl RunnableSubcommand for ThreshTest {
 
         let flat_frame = match &self.flat {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Flat file not found: {}", f);
                 }
                 if HaProcessing::is_ser_file(f) {
                     HaProcessing::create_mean_from_ser(f).unwrap()
                 } else {
-                    RgbImage::open_str(f).unwrap()
+                    Image::open_str(f).unwrap()
                 }
             }
-            None => RgbImage::new_empty().unwrap(),
+            None => Image::new_empty().unwrap(),
         };
 
         let dark_frame = match &self.dark {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Dark file not found: {}", f);
                 }
                 if HaProcessing::is_ser_file(f) {
                     HaProcessing::create_mean_from_ser(f).unwrap()
                 } else {
-                    RgbImage::open_str(f).unwrap()
+                    Image::open_str(f).unwrap()
                 }
             }
-            None => RgbImage::new_empty().unwrap(),
+            None => Image::new_empty().unwrap(),
         };
 
         let dark_flat_frame = match &self.darkflat {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Dark flat file not found: {}", f);
                 }
                 if HaProcessing::is_ser_file(f) {
                     HaProcessing::create_mean_from_ser(f).unwrap()
                 } else {
-                    RgbImage::open_str(f).unwrap()
+                    Image::open_str(f).unwrap()
                 }
             }
-            None => RgbImage::new_empty().unwrap(),
+            None => Image::new_empty().unwrap(),
         };
 
         vprintln!("Loading SER file from {}", self.input_file);

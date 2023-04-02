@@ -36,7 +36,7 @@ pub struct BilinearDrizzle {
     in_height: usize,
     out_width: usize,
     out_height: usize,
-    buffer: RgbImage,
+    buffer: Image,
     frame_add_count: usize,
     divisor: ImageBuffer,
 }
@@ -51,12 +51,12 @@ impl BilinearDrizzle {
         let out_width = (in_width as f32 * scale.value()).ceil() as usize;
         let out_height = (in_height as f32 * scale.value()).ceil() as usize;
         BilinearDrizzle {
-            in_width: in_width,
-            in_height: in_height,
-            out_width: out_width,
-            out_height: out_height,
+            in_width,
+            in_height,
+            out_width,
+            out_height,
             frame_add_count: 0,
-            buffer: RgbImage::new_with_bands(out_width, out_height, num_bands, ImageMode::U16BIT)
+            buffer: Image::new_with_bands(out_width, out_height, num_bands, ImageMode::U16BIT)
                 .expect("Failed to allocate rgbimage"),
             divisor: ImageBuffer::new(out_width, out_height)
                 .expect("Failed to create drizzle divisor buffer"),
@@ -84,7 +84,7 @@ impl BilinearDrizzle {
     }
 
     /// Adds an image that has already been translated and rotated but not upscaled.
-    pub fn add(&mut self, other: &RgbImage) -> error::Result<&'static str> {
+    pub fn add(&mut self, other: &Image) -> error::Result<&'static str> {
         if other.width != self.in_width || other.height != self.in_height {
             return Err("Input image does not match expected input dimensions");
         }
@@ -98,33 +98,30 @@ impl BilinearDrizzle {
                         .put(x, y, self.divisor.get(x, y).unwrap() + 1.0);
 
                     for band in 0..other.num_bands() {
-                        match in_pt.get_interpolated_color(&other.get_band(band)) {
-                            Some(v) => {
+                        if let Some(v) = in_pt.get_interpolated_color(other.get_band(band)) {
+                            self.buffer.put(
+                                x,
+                                y,
+                                v + self.buffer.get_band(0).get(x, y).unwrap(),
+                                band,
+                            );
+
+                            // If we're running as a 3 band drizzle buffer and the user passed in a single-band frame
+                            if other.num_bands() == 1 {
                                 self.buffer.put(
                                     x,
                                     y,
-                                    v + self.buffer.get_band(0).get(x, y).unwrap(),
-                                    band,
+                                    v + self.buffer.get_band(1).get(x, y).unwrap(),
+                                    1,
                                 );
-
-                                // If we're running as a 3 band drizzle buffer and the user passed in a single-band frame
-                                if other.num_bands() == 1 {
-                                    self.buffer.put(
-                                        x,
-                                        y,
-                                        v + self.buffer.get_band(1).get(x, y).unwrap(),
-                                        1,
-                                    );
-                                    self.buffer.put(
-                                        x,
-                                        y,
-                                        v + self.buffer.get_band(2).get(x, y).unwrap(),
-                                        2,
-                                    );
-                                }
+                                self.buffer.put(
+                                    x,
+                                    y,
+                                    v + self.buffer.get_band(2).get(x, y).unwrap(),
+                                    2,
+                                );
                             }
-                            None => {}
-                        };
+                        }
                     }
                 }
             }
@@ -139,7 +136,7 @@ impl BilinearDrizzle {
     // the center of mass.
     pub fn add_with_transform(
         &mut self,
-        other: &RgbImage,
+        other: &Image,
         offset: Offset,
         rotation: f64,
     ) -> error::Result<&'static str> {
@@ -173,33 +170,30 @@ impl BilinearDrizzle {
                 self.divisor
                     .put(x, y, self.divisor.get(x, y).unwrap() + 1.0);
                 for band in 0..other.num_bands() {
-                    match in_pt.get_interpolated_color(&other.get_band(band)) {
-                        Some(v) => {
+                    if let Some(v) = in_pt.get_interpolated_color(other.get_band(band)) {
+                        self.buffer.put(
+                            x,
+                            y,
+                            v + self.buffer.get_band(band).get(x, y).unwrap(),
+                            band,
+                        );
+
+                        // If we're running as a 3 band drizzle buffer and the user passed in a single-band frame
+                        if other.num_bands() == 1 {
                             self.buffer.put(
                                 x,
                                 y,
-                                v + self.buffer.get_band(band).get(x, y).unwrap(),
-                                band,
+                                v + self.buffer.get_band(1).get(x, y).unwrap(),
+                                1,
                             );
-
-                            // If we're running as a 3 band drizzle buffer and the user passed in a single-band frame
-                            if other.num_bands() == 1 {
-                                self.buffer.put(
-                                    x,
-                                    y,
-                                    v + self.buffer.get_band(1).get(x, y).unwrap(),
-                                    1,
-                                );
-                                self.buffer.put(
-                                    x,
-                                    y,
-                                    v + self.buffer.get_band(2).get(x, y).unwrap(),
-                                    2,
-                                );
-                            }
+                            self.buffer.put(
+                                x,
+                                y,
+                                v + self.buffer.get_band(2).get(x, y).unwrap(),
+                                2,
+                            );
                         }
-                        None => {}
-                    };
+                    }
                 }
             }
         }
@@ -207,7 +201,7 @@ impl BilinearDrizzle {
         Ok("ok")
     }
 
-    pub fn get_finalized(&self) -> error::Result<RgbImage> {
+    pub fn get_finalized(&self) -> error::Result<Image> {
         if self.frame_add_count == 0 {
             Err("No frames have been added, cannot divide mean by zero")
         } else {

@@ -54,15 +54,15 @@ fn overlay_image_buffers(bottom: &ImageBuffer, top: &ImageBuffer) -> ImageBuffer
 
 impl RunnableSubcommand for Composite {
     fn run(&self) {
-        if !path::parent_exists_and_writable(&self.output.as_str()) {
+        if !path::parent_exists_and_writable(self.output.as_str()) {
             eprintln!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
-                path::get_parent(&self.output.as_str())
+                path::get_parent(self.output.as_str())
             );
             process::exit(2);
         }
 
-        if !path::file_exists(&self.input.as_str()) {
+        if !path::file_exists(self.input.as_str()) {
             eprintln!("Error: Input file not found: {}", self.input);
             process::exit(2);
         }
@@ -125,6 +125,6 @@ impl RunnableSubcommand for Composite {
 
         // Save resulting image to disk
         vprintln!("Saving image to {}", self.output);
-        composited.save(&self.output.as_str(), ImageMode::U16BIT);
+        composited.save(self.output.as_str(), ImageMode::U16BIT);
     }
 }

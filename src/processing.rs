@@ -7,7 +7,7 @@ use crate::{
 
 use rayon::prelude::*;
 use sciimg::imagebuffer::Offset;
-use sciimg::{error, quality, rgbimage};
+use sciimg::{error, image, quality};
 use std::cmp::Ordering;
 
 const UNKNOWN_ROTATION: f64 = -99999.0;
@@ -55,14 +55,14 @@ trait CenterOfMass {
     ) -> Offset;
 }
 
-impl CenterOfMass for rgbimage::RgbImage {
+impl CenterOfMass for image::Image {
     fn calc_center_of_mass_offset_with_rotation(
         &self,
         threshold: f32,
         rotation: f32,
         band: usize,
     ) -> Offset {
-        let rotated = imagerot::rotate(&self.get_band(band), rotation).unwrap();
+        let rotated = imagerot::rotate(self.get_band(band), rotation).unwrap();
         rotated.calc_center_of_mass_offset(threshold)
     }
 }
@@ -74,16 +74,16 @@ struct ProcessContext {
     pub obs_latitude: f32,
     pub obs_longitude: f32,
     pub target: Target,
-    pub flat_field: rgbimage::RgbImage,
-    pub dark_field: rgbimage::RgbImage,
-    pub dark_flat_field: rgbimage::RgbImage,
+    pub flat_field: image::Image,
+    pub dark_field: image::Image,
+    pub dark_flat_field: image::Image,
 }
 
 pub struct HaProcessing {
-    pub flat_field: rgbimage::RgbImage,
-    pub dark_field: rgbimage::RgbImage,
-    pub dark_flat_field: rgbimage::RgbImage,
-    pub mask: rgbimage::RgbImage,
+    pub flat_field: image::Image,
+    pub dark_field: image::Image,
+    pub dark_flat_field: image::Image,
+    pub mask: image::Image,
     pub width: usize,
     pub height: usize,
     pub crop_width: usize,
@@ -116,13 +116,13 @@ pub struct HaProcessing {
 
 impl HaProcessing {
     pub fn is_ser_file(ser_file_path: &str) -> bool {
-        match path::get_extension(ser_file_path) {
-            Some("ser") | Some("SER") => true,
-            _ => false,
-        }
+        matches!(
+            path::get_extension(ser_file_path),
+            Some("ser") | Some("SER")
+        )
     }
 
-    pub fn create_mean_from_ser(ser_file_path: &str) -> error::Result<rgbimage::RgbImage> {
+    pub fn create_mean_from_ser(ser_file_path: &str) -> error::Result<image::Image> {
         if !HaProcessing::is_ser_file(ser_file_path) {
             Err("Not a SER file")
         } else {
@@ -133,8 +133,9 @@ impl HaProcessing {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn init_new(
-        input_files: &Vec<&str>,
+        input_files: &[&str],
         flat_path: &str,
         dark_path: &str,
         dark_flat_path: &str,
@@ -155,7 +156,7 @@ impl HaProcessing {
         drizzle_scale: drizzle::Scale,
     ) -> error::Result<HaProcessing> {
         let flat = match flat_path.len() {
-            0 => rgbimage::RgbImage::new_empty().unwrap(),
+            0 => image::Image::new_empty().unwrap(),
             _ => {
                 if !path::file_exists(flat_path) {
                     panic!("File not found: {}", flat_path);
@@ -164,13 +165,13 @@ impl HaProcessing {
                 if HaProcessing::is_ser_file(flat_path) {
                     HaProcessing::create_mean_from_ser(flat_path).unwrap()
                 } else {
-                    rgbimage::RgbImage::open_str(flat_path).unwrap()
+                    image::Image::open_str(flat_path).unwrap()
                 }
             }
         };
 
         let dark = match dark_path.len() {
-            0 => rgbimage::RgbImage::new_empty().unwrap(),
+            0 => image::Image::new_empty().unwrap(),
             _ => {
                 if !path::file_exists(dark_path) {
                     panic!("File not found: {}", dark_path);
@@ -179,13 +180,13 @@ impl HaProcessing {
                 if HaProcessing::is_ser_file(dark_path) {
                     HaProcessing::create_mean_from_ser(dark_path).unwrap()
                 } else {
-                    rgbimage::RgbImage::open_str(dark_path).unwrap()
+                    image::Image::open_str(dark_path).unwrap()
                 }
             }
         };
 
         let darkflat = match dark_flat_path.len() {
-            0 => rgbimage::RgbImage::new_empty().unwrap(),
+            0 => image::Image::new_empty().unwrap(),
             _ => {
                 if !path::file_exists(dark_flat_path) {
                     panic!("File not found: {}", dark_flat_path);
@@ -194,18 +195,18 @@ impl HaProcessing {
                 if HaProcessing::is_ser_file(dark_flat_path) {
                     HaProcessing::create_mean_from_ser(dark_flat_path).unwrap()
                 } else {
-                    rgbimage::RgbImage::open_str(dark_flat_path).unwrap()
+                    image::Image::open_str(dark_flat_path).unwrap()
                 }
             }
         };
 
         let mask = match mask_file.len() {
-            0 => rgbimage::RgbImage::new_empty().unwrap(),
+            0 => image::Image::new_empty().unwrap(),
             _ => {
                 if !path::file_exists(mask_file) {
                     panic!("File not found: {}", mask_file);
                 }
-                rgbimage::RgbImage::open_str(mask_file).unwrap()
+                image::Image::open_str(mask_file).unwrap()
             }
         };
 
@@ -218,26 +219,26 @@ impl HaProcessing {
             flat_field: flat,
             dark_field: dark,
             dark_flat_field: darkflat,
-            mask: mask,
+            mask,
             width: ser1.image_width,
             height: ser1.image_height,
-            crop_width: crop_width,
-            crop_height: crop_height,
+            crop_width,
+            crop_height,
             buffer: drizzle_buffer,
             frame_count: 0,
-            obj_detect_threshold: obj_detect_threshold,
-            red_scalar: red_scalar,
-            green_scalar: green_scalar,
-            blue_scalar: blue_scalar,
-            obs_latitude: obs_latitude,
-            obs_longitude: obs_longitude,
-            min_sigma: min_sigma,
-            max_sigma: max_sigma,
-            pct_of_max: pct_of_max,
-            number_of_frames: number_of_frames,
-            target: target,
+            obj_detect_threshold,
+            red_scalar,
+            green_scalar,
+            blue_scalar,
+            obs_latitude,
+            obs_longitude,
+            min_sigma,
+            max_sigma,
+            pct_of_max,
+            number_of_frames,
+            target,
             file_map: fpmap::FpMap::new(),
-            drizzle_scale: drizzle_scale,
+            drizzle_scale,
         })
     }
 
@@ -250,19 +251,11 @@ impl HaProcessing {
         let (alt, az) = match target {
             Target::Moon => {
                 vprintln!("Calculating position for Moon");
-                lunar::position_from_lat_lon_and_time(
-                    obs_latitude as f64,
-                    obs_longitude as f64,
-                    &ts,
-                )
+                lunar::position_from_lat_lon_and_time(obs_latitude as f64, obs_longitude as f64, ts)
             }
             Target::Sun => {
                 vprintln!("Calculating position for Sun");
-                solar::position_from_lat_lon_and_time(
-                    obs_latitude as f64,
-                    obs_longitude as f64,
-                    &ts,
-                )
+                solar::position_from_lat_lon_and_time(obs_latitude as f64, obs_longitude as f64, ts)
             }
         };
 
@@ -271,7 +264,7 @@ impl HaProcessing {
         (rotation, alt, az)
     }
 
-    pub fn process_frame(&self, buffer: &mut rgbimage::RgbImage) {
+    pub fn process_frame(&self, buffer: &mut image::Image) {
         buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
     }
 
@@ -300,7 +293,7 @@ impl HaProcessing {
 
             if !self.mask.is_empty() {
                 for i in 0..final_buffer.num_bands() {
-                    final_buffer.apply_mask_to_band(&self.mask.get_band(0), i)
+                    final_buffer.apply_mask_to_band(self.mask.get_band(0), i)
                 }
             }
 
@@ -327,7 +320,7 @@ impl HaProcessing {
     }
 
     fn get_rotation_of_single_frame(
-        frame_records: &Vec<FrameRecord>,
+        frame_records: &[FrameRecord],
         target: Target,
         obs_latitude: f32,
         obs_longitude: f32,
@@ -347,7 +340,7 @@ impl HaProcessing {
 
     fn process_frame_records(
         &mut self,
-        frame_records: &Vec<FrameRecord>,
+        frame_records: &[FrameRecord],
         enable_rotation: bool,
         initial_rotation: Option<f64>,
     ) {
@@ -355,7 +348,7 @@ impl HaProcessing {
         let initial_rotation = match initial_rotation {
             Some(r) => r,
             None => HaProcessing::get_rotation_of_single_frame(
-                &frame_records,
+                frame_records,
                 self.target,
                 self.obs_latitude,
                 self.obs_longitude,
@@ -496,7 +489,7 @@ impl HaProcessing {
             .par_iter()
             .map(|item| {
                 let (_pth, sf) = item;
-                self.determine_quality_in_ser(&sf)
+                self.determine_quality_in_ser(sf)
             })
             .collect::<Vec<Vec<FrameRecord>>>()
             .iter()
@@ -509,7 +502,7 @@ impl HaProcessing {
         frame_records
     }
 
-    pub fn init_ser_file_map(&mut self, ser_files: &Vec<&str>) {
+    pub fn init_ser_file_map(&mut self, ser_files: &[&str]) {
         for sf in ser_files.iter() {
             if !path::file_exists(sf) {
                 panic!("File not found: {}", sf);
@@ -521,7 +514,7 @@ impl HaProcessing {
 
     pub fn process_ser_files(
         &mut self,
-        ser_files: &Vec<&str>,
+        ser_files: &[&str],
         limit_top_pct: u8,
         enable_rotation: bool,
         initial_rotation: Option<f64>,

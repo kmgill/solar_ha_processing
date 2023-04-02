@@ -3,7 +3,7 @@ use crate::vprintln;
 use sciimg::prelude::*;
 use sciimg::Dn;
 
-pub fn threshtest(frame: &RgbImage, threshold: Dn) -> ImageBuffer {
+pub fn threshtest(frame: &Image, threshold: Dn) -> ImageBuffer {
     vprintln!(
         "Creating test visualization buffer of size {}x{}",
         frame.width,
@@ -16,9 +16,9 @@ pub fn threshtest(frame: &RgbImage, threshold: Dn) -> ImageBuffer {
         for x in 0..frame.width {
             let mut v = 0.0;
             for b in 0..frame.num_bands() {
-                v = v + frame.get_band(b).get(x, y).unwrap();
+                v += frame.get_band(b).get(x, y).unwrap();
             }
-            v = v / frame.num_bands() as Dn;
+            v /= frame.num_bands() as Dn;
             if v > threshold {
                 out_img.put(x, y, 65535.0);
             } else {

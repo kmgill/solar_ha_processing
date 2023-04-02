@@ -18,10 +18,10 @@ pub struct Subtract {
 
 impl RunnableSubcommand for Subtract {
     fn run(&self) {
-        if !path::parent_exists_and_writable(&self.output.as_str()) {
+        if !path::parent_exists_and_writable(self.output.as_str()) {
             eprintln!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
-                path::get_parent(&self.output.as_str())
+                path::get_parent(self.output.as_str())
             );
             process::exit(2);
         }

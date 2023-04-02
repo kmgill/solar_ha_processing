@@ -43,11 +43,11 @@ pub struct Params {
 }
 
 pub fn load_params_mapping_toml(caldata_toml_path: &String) -> Params {
-    if !path::file_exists(&caldata_toml_path) {
+    if !path::file_exists(caldata_toml_path) {
         panic!("File not found: {}", caldata_toml_path);
     }
 
-    let mut file = match File::open(&caldata_toml_path) {
+    let mut file = match File::open(caldata_toml_path) {
         Err(why) => panic!("couldn't open {}", why),
         Ok(file) => file,
     };

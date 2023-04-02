@@ -1,11 +1,11 @@
 use crate::{path, ser, vprintln};
 
-use sciimg::{enums::ImageMode, error, rgbimage};
+use sciimg::{enums::ImageMode, error, image};
 
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
-pub fn build_mean_buffer(ser_file_path: &str) -> error::Result<rgbimage::RgbImage> {
+pub fn build_mean_buffer(ser_file_path: &str) -> error::Result<image::Image> {
     if !path::file_exists(ser_file_path) {
         return Err("File not found");
     }
@@ -17,7 +17,7 @@ pub fn build_mean_buffer(ser_file_path: &str) -> error::Result<rgbimage::RgbImag
         _ => 3,
     };
 
-    rgbimage::RgbImage::new_with_bands(
+    image::Image::new_with_bands(
         ser_file.image_width,
         ser_file.image_height,
         num_bands,
@@ -32,7 +32,7 @@ pub fn build_mean_buffer(ser_file_path: &str) -> error::Result<rgbimage::RgbImag
 pub fn compute_mean(
     ser_files: &Vec<&str>,
     _skip_glitch_frames: bool,
-) -> error::Result<rgbimage::RgbImage> {
+) -> error::Result<image::Image> {
     let mut mean_buffer = build_mean_buffer(ser_files[0]).unwrap();
     let buffer_mtx = Arc::new(Mutex::new(&mut mean_buffer));
 

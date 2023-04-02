@@ -2,7 +2,7 @@ use crate::subs::runnable::RunnableSubcommand;
 
 use solhat::{path, processing, ser, vprintln};
 
-use sciimg::{quality, rgbimage};
+use sciimg::{image, quality};
 
 use rayon::prelude::*;
 use std::fs;
@@ -38,47 +38,40 @@ pub struct Extract {
 
 impl RunnableSubcommand for Extract {
     fn run(&self) {
-        let min_sigma = match self.minsigma {
-            Some(m) => m,
-            None => 1.0,
-        };
-
-        let max_sigma = match self.maxsigma {
-            Some(m) => m,
-            None => 100000.0,
-        };
+        let min_sigma = self.minsigma.unwrap_or(1.0);
+        let max_sigma = self.maxsigma.unwrap_or(100000.0);
 
         let flat_frame = match &self.flat {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Flat file not found: {}", f);
                 }
 
-                processing::HaProcessing::create_mean_from_ser(&f).unwrap()
+                processing::HaProcessing::create_mean_from_ser(f).unwrap()
             }
-            None => rgbimage::RgbImage::new_empty().unwrap(),
+            None => image::Image::new_empty().unwrap(),
         };
 
         let dark_frame = match &self.dark {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Dark file not found: {}", f);
                 }
 
-                processing::HaProcessing::create_mean_from_ser(&f).unwrap()
+                processing::HaProcessing::create_mean_from_ser(f).unwrap()
             }
-            None => rgbimage::RgbImage::new_empty().unwrap(),
+            None => image::Image::new_empty().unwrap(),
         };
 
         let dark_flat_frame = match &self.darkflat {
             Some(f) => {
-                if !path::file_exists(&f) {
+                if !path::file_exists(f) {
                     eprintln!("Error: Dark flat file not found: {}", f);
                 }
 
-                processing::HaProcessing::create_mean_from_ser(&f).unwrap()
+                processing::HaProcessing::create_mean_from_ser(f).unwrap()
             }
-            None => rgbimage::RgbImage::new_empty().unwrap(),
+            None => image::Image::new_empty().unwrap(),
         };
 
         self.input_files.iter().for_each(|ser_file_path| {
@@ -96,9 +89,9 @@ impl RunnableSubcommand for Extract {
                 let bn = path::basename(ser_file_path);
                 let out_file_base = bn.replace(".ser", "").replace(".SER", "");
                 output_directory = format!("{}/{}", &output_directory, &out_file_base);
-                if !path::file_exists(&output_directory.as_str()) {
+                if !path::file_exists(output_directory.as_str()) {
                     let err = format!("Failed to create output directory {}", &output_directory);
-                    fs::create_dir(&output_directory).expect(err.as_str());
+                    fs::create_dir(&output_directory).unwrap_or_else(|_| panic!("{}", err));
                 }
             }
 

@@ -1,15 +1,15 @@
 use crate::guassianblur::guassian_blur_nband;
 use crate::vprintln;
 use sciimg::error;
+use sciimg::image::Image;
 use sciimg::imagebuffer::ImageBuffer;
-use sciimg::rgbimage::RgbImage;
 
 pub fn unsharp_mask_nbands(
     buffers: &Vec<ImageBuffer>,
     sigma: f32,
     amount: f32,
 ) -> error::Result<Vec<ImageBuffer>> {
-    match guassian_blur_nband(&buffers, sigma) {
+    match guassian_blur_nband(buffers, sigma) {
         Ok(blurred) => {
             let mut out_buffers: Vec<ImageBuffer> = vec![];
             for b in 0..blurred.len() {
@@ -36,7 +36,7 @@ pub trait RgbImageUnsharpMask {
     fn unsharp_mask(&mut self, sigma: f32, amount: f32);
 }
 
-impl RgbImageUnsharpMask for RgbImage {
+impl RgbImageUnsharpMask for Image {
     fn unsharp_mask(&mut self, sigma: f32, amount: f32) {
         let mut buffers = vec![];
         for b in 0..self.num_bands() {
@@ -45,7 +45,7 @@ impl RgbImageUnsharpMask for RgbImage {
 
         match unsharp_mask_nbands(&buffers, sigma, amount) {
             Ok(buffers) => {
-                for b in 0..buffers.len() {
+                for (b, _) in buffers.iter().enumerate() {
                     self.set_band(&buffers[b], b);
                 }
             }

@@ -49,10 +49,7 @@ impl BinFileReader {
     }
 
     pub fn read_string(&self, start: usize, len: usize) -> String {
-        let v: Vec<u8> = self.map[start..(start + len)]
-            .iter()
-            .map(|x| x.clone())
-            .collect();
+        let v: Vec<u8> = self.map[start..(start + len)].to_vec();
         String::from_utf8(v).expect("Failed reading string value")
     }
 
@@ -183,14 +180,15 @@ impl BinFileReader {
     }
 
     pub fn read_bytes(&self, start: usize, length: usize) -> Vec<u8> {
-        self.map[start..(start + length)]
-            .iter()
-            .map(|x| x.clone())
-            .collect()
+        self.map[start..(start + length)].to_vec()
     }
 
     pub fn len(&self) -> usize {
         self.map.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
     }
 
     pub fn source_file_path(&self) -> String {

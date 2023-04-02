@@ -13,7 +13,7 @@ trait AvgValueAtRadius {
     fn avg_value_at_radius(&self, radius: f64, band: usize) -> Dn;
 }
 
-impl AvgValueAtRadius for RgbImage {
+impl AvgValueAtRadius for Image {
     fn avg_value_at_radius(&self, radius: f64, band: usize) -> Dn {
         let middle_x = self.width / 2;
         let middle_y = self.height / 2;
@@ -23,7 +23,7 @@ impl AvgValueAtRadius for RgbImage {
 
         for d in 0..360 {
             let mtx = Matrix::rotate((d as f64).to_radians(), Axis::ZAxis);
-            let mut pt_vec = Vector::new(radius as f64, 0.0, 0.0);
+            let mut pt_vec = Vector::new(radius, 0.0, 0.0);
             pt_vec = mtx.multiply_vector(&pt_vec);
             let pt = Point {
                 x: pt_vec.x as f32 + middle_x as f32,
@@ -31,16 +31,12 @@ impl AvgValueAtRadius for RgbImage {
                 valid: true,
             };
 
-            match pt.get_interpolated_color(self.get_band(band)) {
-                Some(v) => {
-                    ttl += v;
-                    cnt += 1;
-                }
-                None => {}
-            };
+            if let Some(v) = pt.get_interpolated_color(self.get_band(band)) {
+                ttl += v;
+                cnt += 1;
+            }
         }
-        let value_at_r = ttl / cnt as Dn;
-        value_at_r
+        ttl / cnt as Dn
     }
 }
 
@@ -50,7 +46,7 @@ pub fn print_radial_intensities(image_file: &String, radius_pixels: usize) {
         process::exit(1);
     }
 
-    let img = RgbImage::open16(image_file).unwrap();
+    let img = Image::open(image_file).unwrap();
 
     let middle_x = img.width / 2;
     let middle_y = img.height / 2;
@@ -81,13 +77,10 @@ pub fn print_radial_intensities(image_file: &String, radius_pixels: usize) {
                 valid: true,
             };
 
-            match pt.get_interpolated_color(img.get_band(0)) {
-                Some(v) => {
-                    ttl += v;
-                    cnt += 1;
-                }
-                None => {}
-            };
+            if let Some(v) = pt.get_interpolated_color(img.get_band(0)) {
+                ttl += v;
+                cnt += 1;
+            }
         }
         let value_at_r = ttl / cnt as Dn;
 
@@ -114,7 +107,7 @@ pub fn limb_darkening_correction(
     }
 
     vprintln!("Opening input file: {}", image_file);
-    let img = RgbImage::open16(image_file).unwrap();
+    let img = Image::open(image_file).unwrap();
 
     match limb_darkening_correction_on_image(
         &img,
@@ -133,12 +126,12 @@ pub fn limb_darkening_correction(
 }
 
 pub fn limb_darkening_correction_on_image(
-    img: &RgbImage,
+    img: &Image,
     radius_pixels: usize,
     ld_coefficients: &Vec<f64>,
     composite_gradient_margin: f64,
     inverted_chromosphere: bool,
-) -> error::Result<RgbImage> {
+) -> error::Result<Image> {
     vprintln!(
         "Generating output buffer of size {}x{}",
         img.width,
@@ -146,7 +139,7 @@ pub fn limb_darkening_correction_on_image(
     );
     //let mut corrected_output = ImageBuffer::new(img.width, img.height).unwrap();
 
-    if ld_coefficients.len() == 0
+    if ld_coefficients.is_empty()
         || (ld_coefficients.len() > 1 && ld_coefficients.len() != img.num_bands())
     {
         veprintln!("Invalid number of limb darkening coefficients");
@@ -154,7 +147,7 @@ pub fn limb_darkening_correction_on_image(
     }
 
     let mut corrected_output =
-        RgbImage::new_with_bands(img.width, img.height, img.num_bands(), img.get_mode()).unwrap();
+        Image::new_with_bands(img.width, img.height, img.num_bands(), img.get_mode()).unwrap();
 
     let middle_x = img.width / 2;
     let middle_y = img.height / 2;
