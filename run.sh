@@ -159,19 +159,25 @@ FLAT_FRAME=$DATAROOT/Flat_${DATA_TS}${VERSION}.png
 DARKFLAT_FRAME=$DATAROOT/Dark-Flat_${DATA_TS}${VERSION}.png
 
 echo Creating calibration frames...
-solha -v mean -i $DATAROOT/$DARK_ROOT/*/*ser -o $DARK_FRAME
-if [ ! -f $DARK_FRAME -o $? -ne 0 ]; then
-    echo Error: Failed to generate dark frame
+if [ ! -f $DARK_FRAME ]; then
+    solha -v mean -i $DATAROOT/$DARK_ROOT/*/*ser -o $DARK_FRAME
+    if [ ! -f $DARK_FRAME -o $? -ne 0 ]; then
+        echo Error: Failed to generate dark frame
+    fi
 fi
 
-solha -v mean -i $DATAROOT/$FLAT_ROOT/*/*ser -o $FLAT_FRAME
-if [ ! -f $FLAT_FRAME -o $? -ne 0 ]; then
-    echo Error: Failed to generate flat frame
+if [ ! -f $FLAT_FRAME ]; then
+    solha -v mean -i $DATAROOT/$FLAT_ROOT/*/*ser -o $FLAT_FRAME
+    if [ ! -f $FLAT_FRAME -o $? -ne 0 ]; then
+        echo Error: Failed to generate flat frame
+    fi
 fi
 
-solha -v mean -i $DATAROOT/$DARK_FLAT_ROOT/*/*ser -o $DARKFLAT_FRAME
-if [ ! -f $DARKFLAT_FRAME -o $? -ne 0 ]; then
-    echo Error: Failed to generate flat-dark frame
+if [ ! -f $DARKFLAT_FRAME ]; then
+    solha -v mean -i $DATAROOT/$DARK_FLAT_ROOT/*/*ser -o $DARKFLAT_FRAME
+    if [ ! -f $DARKFLAT_FRAME -o $? -ne 0 ]; then
+        echo Error: Failed to generate flat-dark frame
+    fi
 fi
 
 echo Generating threshold test frame...

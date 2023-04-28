@@ -95,14 +95,14 @@ impl BilinearDrizzle {
 
                 if in_pt.valid {
                     self.divisor
-                        .put(x, y, self.divisor.get(x, y).unwrap() + 1.0);
+                        .put(x, y, self.divisor.get(x, y) + 1.0);
 
                     for band in 0..other.num_bands() {
                         if let Some(v) = in_pt.get_interpolated_color(other.get_band(band)) {
                             self.buffer.put(
                                 x,
                                 y,
-                                v + self.buffer.get_band(0).get(x, y).unwrap(),
+                                v + self.buffer.get_band(0).get(x, y),
                                 band,
                             );
 
@@ -111,13 +111,13 @@ impl BilinearDrizzle {
                                 self.buffer.put(
                                     x,
                                     y,
-                                    v + self.buffer.get_band(1).get(x, y).unwrap(),
+                                    v + self.buffer.get_band(1).get(x, y),
                                     1,
                                 );
                                 self.buffer.put(
                                     x,
                                     y,
-                                    v + self.buffer.get_band(2).get(x, y).unwrap(),
+                                    v + self.buffer.get_band(2).get(x, y),
                                     2,
                                 );
                             }
@@ -168,13 +168,13 @@ impl BilinearDrizzle {
                 in_pt.y -= offset.v;
 
                 self.divisor
-                    .put(x, y, self.divisor.get(x, y).unwrap() + 1.0);
+                    .put(x, y, self.divisor.get(x, y) + 1.0);
                 for band in 0..other.num_bands() {
                     if let Some(v) = in_pt.get_interpolated_color(other.get_band(band)) {
                         self.buffer.put(
                             x,
                             y,
-                            v + self.buffer.get_band(band).get(x, y).unwrap(),
+                            v + self.buffer.get_band(band).get(x, y),
                             band,
                         );
 
@@ -183,13 +183,13 @@ impl BilinearDrizzle {
                             self.buffer.put(
                                 x,
                                 y,
-                                v + self.buffer.get_band(1).get(x, y).unwrap(),
+                                v + self.buffer.get_band(1).get(x, y),
                                 1,
                             );
                             self.buffer.put(
                                 x,
                                 y,
-                                v + self.buffer.get_band(2).get(x, y).unwrap(),
+                                v + self.buffer.get_band(2).get(x, y),
                                 2,
                             );
                         }

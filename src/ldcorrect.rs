@@ -216,7 +216,7 @@ pub fn limb_darkening_correction_on_image(
 
             for band in 0..img.num_bands() {
                 // Observed value of the pixel
-                let i = img.get_band(band).get(x, y).unwrap();
+                let i = img.get_band(band).get(x, y);
 
                 let model_intensity = center_intensities[band]
                     * (1.0 - coefficients[band] * (1.0 - ((a * a - r * r) / (a * a)).sqrt()));

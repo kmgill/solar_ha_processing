@@ -54,10 +54,10 @@ impl Point {
             return None;
         }
 
-        let v00 = buffer.get(self.x_fl(), self.y_fl()).unwrap();
-        let v01 = buffer.get(x_cl, self.y_fl()).unwrap();
-        let v10 = buffer.get(self.x_fl(), y_cl).unwrap();
-        let v11 = buffer.get(x_cl, y_cl).unwrap();
+        let v00 = buffer.get(self.x_fl(), self.y_fl());
+        let v01 = buffer.get(x_cl, self.y_fl());
+        let v10 = buffer.get(self.x_fl(), y_cl);
+        let v11 = buffer.get(x_cl, y_cl);
 
         let yd = self.y_frac();
         let xd = self.x_frac();

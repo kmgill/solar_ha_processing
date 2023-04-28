@@ -16,13 +16,13 @@ pub fn threshtest(frame: &Image, threshold: Dn) -> ImageBuffer {
         for x in 0..frame.width {
             let mut v = 0.0;
             for b in 0..frame.num_bands() {
-                v += frame.get_band(b).get(x, y).unwrap();
+                v += frame.get_band(b).get(x, y);
             }
             v /= frame.num_bands() as Dn;
             if v > threshold {
                 out_img.put(x, y, 65535.0);
             } else {
-                out_img.put(x, y, frame.get_band(0).get(x, y).unwrap());
+                out_img.put(x, y, frame.get_band(0).get(x, y));
             }
         }
     }

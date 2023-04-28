@@ -24,7 +24,7 @@ fn invert_image_buffer(image: &ImageBuffer) -> ImageBuffer {
 
     for y in 0..image.height {
         for x in 0..image.width {
-            inverted.put(x, y, 65535.0 - inverted.get(x, y).unwrap());
+            inverted.put(x, y, 65535.0 - inverted.get(x, y));
         }
     }
 
@@ -39,8 +39,8 @@ fn overlay_image_buffers(bottom: &ImageBuffer, top: &ImageBuffer) -> ImageBuffer
 
     for y in 0..bottom.height {
         for x in 0..top.width {
-            let a = bottom.get(x, y).unwrap();
-            let b = top.get(x, y).unwrap();
+            let a = bottom.get(x, y);
+            let b = top.get(x, y);
             let f = if a < 0.5 {
                 2.0 * a * b
             } else {
@@ -108,8 +108,8 @@ impl RunnableSubcommand for Composite {
                 let r = mid_vec.distance_to(&p);
 
                 if r <= self.radius as f64 {
-                    let a = composited.get(x, y).unwrap();
-                    let b = normalized.get(x, y).unwrap();
+                    let a = composited.get(x, y);
+                    let b = normalized.get(x, y);
 
                     let f = if self.radius as f64 - r <= border_blur_margin {
                         let frac = ((self.radius as f64 - r) / border_blur_margin) as f32;
