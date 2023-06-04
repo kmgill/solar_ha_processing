@@ -1,8 +1,8 @@
 // Technical specification: http://www.grischa-hahn.homepage.t-online.de/astro/ser/SER%20Doc%20V3b.pdf
 
-use crate::{print, timestamp, vprintln};
-
-use sciimg::{binfilereader::*, debayer, enums::ImageMode, error, image, imagebuffer};
+use crate::timestamp;
+use anyhow::{anyhow, Result};
+use sciimg::{binfilereader::*, debayer, enums::ImageMode, image, imagebuffer};
 
 const HEADER_SIZE_BYTES: usize = 178;
 const TIMESTAMP_SIZE_BYTES: usize = 8;
@@ -133,7 +133,7 @@ impl SerFile {
         );
     }
 
-    pub fn load_ser(file_path: &str) -> error::Result<SerFile> {
+    pub fn load_ser(file_path: &str) -> Result<SerFile> {
         let mut file_reader =
             BinFileReader::new_as_endiness(&file_path.to_string(), Endian::LittleEndian);
         let endiness = Endian::from_i32(file_reader.read_i32(22)); // 4 bytes, start at 22
@@ -157,7 +157,7 @@ impl SerFile {
             source_file: file_path.to_string(),
         };
 
-        if print::is_verbose() {
+        if stump::is_verbose() {
             ser.print_header_details();
         }
 
@@ -199,9 +199,9 @@ impl SerFile {
         assert_eq!(self.total_size, expected_size);
     }
 
-    pub fn get_frame_timestamp(&self, frame_num: usize) -> error::Result<u64> {
+    pub fn get_frame_timestamp(&self, frame_num: usize) -> Result<u64> {
         if frame_num >= self.frame_count {
-            return Err("Frame number out of range");
+            return Err(anyhow!("Frame number out of range"));
         }
 
         if !self.has_timestamps() {
@@ -214,9 +214,9 @@ impl SerFile {
             .read_u64_with_endiness(timestamp_start_index, Endian::NativeEndian))
     }
 
-    pub fn get_frame(&self, frame_num: usize) -> error::Result<SerFrame> {
+    pub fn get_frame(&self, frame_num: usize) -> Result<SerFrame> {
         if frame_num >= self.frame_count {
-            return Err("Frame number out of range");
+            return Err(anyhow!("Frame number out of range"));
         }
 
         let image_frame_size_bytes = self.image_frame_size_bytes();

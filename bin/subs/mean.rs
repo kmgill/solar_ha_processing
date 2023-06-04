@@ -1,7 +1,6 @@
 use crate::subs::runnable::RunnableSubcommand;
-
 use sciimg::path;
-use solhat::{mean, vprintln};
+use solhat::mean;
 use std::process;
 
 #[derive(clap::Args)]
@@ -17,7 +16,7 @@ pub struct Mean {
 impl RunnableSubcommand for Mean {
     fn run(&self) {
         if !path::parent_exists_and_writable(self.output.as_str()) {
-            eprintln!(
+            error!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
                 path::get_parent(self.output.as_str())
             );
@@ -28,7 +27,7 @@ impl RunnableSubcommand for Mean {
 
         let mean_stack = mean::compute_mean(&input_files, true).expect("Failed to calculate mean");
 
-        vprintln!("Saving stack buffer to {}", self.output);
-        mean_stack.save(&self.output);
+        info!("Saving stack buffer to {}", self.output);
+        mean_stack.save(&self.output).expect("Failed to save image");
     }
 }

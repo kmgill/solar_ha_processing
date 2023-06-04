@@ -1,6 +1,5 @@
-use crate::{ser, vprintln};
-use sciimg::error;
-use sciimg::ok;
+use crate::ser;
+use anyhow::{anyhow, Result};
 use sciimg::path;
 use std::collections::HashMap;
 
@@ -47,12 +46,12 @@ impl FpMap {
         self.map.get(path)
     }
 
-    pub fn open(&mut self, path: &String) -> error::Result<&str> {
+    pub fn open(&mut self, path: &String) -> Result<()> {
         if self.contains(path) {
-            return Err("File already open");
+            return Err(anyhow!("File already open"));
         }
 
-        vprintln!("Opening file in fpmap: {}", path);
+        info!("Opening file in fpmap: {}", path);
 
         if !path::file_exists(path) {
             panic!("File not found: {}", path);
@@ -62,9 +61,9 @@ impl FpMap {
             Ok(ser_file) => {
                 ser_file.validate();
                 self.map.insert(path.clone(), ser_file);
-                ok!()
+                Ok(())
             }
-            Err(e) => Err(e),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 }

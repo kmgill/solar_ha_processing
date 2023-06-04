@@ -1,9 +1,7 @@
 use crate::subs::runnable::RunnableSubcommand;
-
-use solhat::{enums::Target, lunar, parallacticangle, ser, solar, vprintln};
-
 use sciimg::path;
 use sciimg::quality;
+use solhat::{enums::Target, lunar, parallacticangle, ser, solar};
 use std::process;
 
 #[derive(clap::Args)]
@@ -56,11 +54,11 @@ impl RunnableSubcommand for FrameStats {
                 let frame_buffer = ser_file.get_frame(i).unwrap();
                 let (alt, az) = match target {
                     Target::Moon => {
-                        vprintln!("Calculating position for Moon");
+                        info!("Calculating position for Moon");
                         lunar::position_from_lat_lon_and_time(self.latitude as f64, self.longitude as f64, &frame_buffer.timestamp)
                     },
                     Target::Sun => {
-                        vprintln!("Calculating position for Sun");
+                        info!("Calculating position for Sun");
                         solar::position_from_lat_lon_and_time(self.latitude as f64, self.longitude as f64, &frame_buffer.timestamp)
                     }
                 };

@@ -1,10 +1,7 @@
 use crate::subs::runnable::RunnableSubcommand;
-
 use sciimg::image::Image;
 use sciimg::medianblur;
 use sciimg::path;
-use solhat::vprintln;
-
 use std::process;
 
 #[derive(clap::Args)]
@@ -23,7 +20,7 @@ pub struct Median {
 impl RunnableSubcommand for Median {
     fn run(&self) {
         if !path::parent_exists_and_writable(self.output.as_str()) {
-            eprintln!(
+            error!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
                 path::get_parent(self.output.as_str())
             );
@@ -46,6 +43,6 @@ impl RunnableSubcommand for Median {
         img.set_band(&g, 1);
         img.set_band(&b, 2);
 
-        img.save(&self.output);
+        img.save(&self.output).expect("Failed to save image");
     }
 }

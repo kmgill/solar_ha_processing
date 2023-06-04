@@ -1,9 +1,5 @@
 use crate::subs::runnable::RunnableSubcommand;
-
-use solhat::vprintln;
-
 use sciimg::{enums::ImageMode, imagebuffer, path};
-
 use std::process;
 
 #[derive(clap::Args)]
@@ -19,7 +15,7 @@ pub struct Add {
 impl RunnableSubcommand for Add {
     fn run(&self) {
         if !path::parent_exists_and_writable(self.output.as_str()) {
-            eprintln!(
+            error!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
                 path::get_parent(self.output.as_str())
             );
@@ -32,7 +28,7 @@ impl RunnableSubcommand for Add {
             vprintln!("Loading input file {}", input_file);
 
             if !path::file_exists(input_file) {
-                eprintln!("Error: Input file not found: {}", input_file);
+                error!("Error: Input file not found: {}", input_file);
                 process::exit(1);
             }
 
@@ -46,7 +42,10 @@ impl RunnableSubcommand for Add {
             }
         });
 
-        vprintln!("Writing output file to {}", self.output);
-        composite.save(self.output.as_str(), ImageMode::U16BIT);
+        info!("Writing output file to {}", self.output);
+        composite.mode = ImageMode::U16BIT;
+        composite
+            .save(self.output.as_str())
+            .expect("Failed to save image");
     }
 }

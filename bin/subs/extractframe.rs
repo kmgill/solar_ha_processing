@@ -53,6 +53,9 @@ impl RunnableSubcommand for ExtractFrame {
             process::exit(3);
         }
 
-        frame.buffer.save(&self.output);
+        frame
+            .buffer
+            .save(&self.output)
+            .expect("Failed to save image");
     }
 }

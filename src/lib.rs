@@ -1,5 +1,8 @@
 extern crate clap;
 
+#[macro_use]
+extern crate stump;
+
 pub mod constants;
 pub mod drizzle;
 pub mod enums;
@@ -10,7 +13,6 @@ pub mod mean;
 pub mod parallacticangle;
 pub mod params;
 pub mod point;
-pub mod print;
 pub mod processing;
 pub mod ser;
 pub mod solar;

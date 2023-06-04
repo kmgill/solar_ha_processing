@@ -1,4 +1,4 @@
-use crate::{timestamp, vprintln};
+use crate::timestamp;
 
 pub mod util {
 

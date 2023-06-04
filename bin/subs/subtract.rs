@@ -1,9 +1,5 @@
 use crate::subs::runnable::RunnableSubcommand;
-
-use solhat::vprintln;
-
 use sciimg::{enums::ImageMode, imagebuffer, path};
-
 use std::process;
 
 #[derive(clap::Args)]
@@ -19,7 +15,7 @@ pub struct Subtract {
 impl RunnableSubcommand for Subtract {
     fn run(&self) {
         if !path::parent_exists_and_writable(self.output.as_str()) {
-            eprintln!(
+            error!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
                 path::get_parent(self.output.as_str())
             );
@@ -27,22 +23,22 @@ impl RunnableSubcommand for Subtract {
         }
 
         if self.input_files.len() < 2 {
-            eprintln!("Error: Two input files are required");
+            error!("Error: Two input files are required");
             process::exit(3);
         }
         // Assuming length of array!
         let first = self.input_files[0].clone();
         let second = self.input_files[1].clone();
 
-        vprintln!("Loading input file {}", first);
+        info!("Loading input file {}", first);
         if !path::file_exists(&first) {
-            eprintln!("Error: Input file not found: {}", first);
+            error!("Error: Input file not found: {}", first);
             process::exit(1);
         }
 
-        vprintln!("Loading input file {}", second);
+        info!("Loading input file {}", second);
         if !path::file_exists(&second) {
-            eprintln!("Error: Input file not found: {}", second);
+            error!("Error: Input file not found: {}", second);
             process::exit(1);
         }
 
@@ -54,7 +50,8 @@ impl RunnableSubcommand for Subtract {
         second_buff.scale_mut(0.6);
         first_buff.subtract_mut(&second_buff);
 
-        vprintln!("Writing output file to {}", self.output);
-        first_buff.save(&self.output, ImageMode::U16BIT);
+        info!("Writing output file to {}", self.output);
+        first_buff.mode = ImageMode::U16BIT;
+        first_buff.save(&self.output).expect("Failed to save image");
     }
 }

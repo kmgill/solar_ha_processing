@@ -1,12 +1,13 @@
 use crate::{
     drizzle::{self, BilinearDrizzle},
     enums::Target,
-    fpmap, lunar, mean, parallacticangle, ser, solar, timestamp, vprintln,
+    fpmap, lunar, mean, parallacticangle, ser, solar, timestamp,
 };
 
+use anyhow::{anyhow, Result};
 use rayon::prelude::*;
 use sciimg::imagebuffer::Offset;
-use sciimg::{error, image, imagerot, ok, path, quality};
+use sciimg::{image, imagerot, path, quality};
 use std::cmp::Ordering;
 
 const UNKNOWN_ROTATION: f64 = -99999.0;
@@ -121,9 +122,9 @@ impl HaProcessing {
         )
     }
 
-    pub fn create_mean_from_ser(ser_file_path: &str) -> error::Result<image::Image> {
+    pub fn create_mean_from_ser(ser_file_path: &str) -> Result<image::Image> {
         if !HaProcessing::is_ser_file(ser_file_path) {
-            Err("Not a SER file")
+            Err(anyhow!("Not a SER file"))
         } else {
             let input_files: Vec<&str> = vec![ser_file_path];
             let mean_stack =
@@ -153,7 +154,7 @@ impl HaProcessing {
         number_of_frames: usize,
         target: Target,
         drizzle_scale: drizzle::Scale,
-    ) -> error::Result<HaProcessing> {
+    ) -> Result<HaProcessing> {
         let flat = match flat_path.len() {
             0 => image::Image::new_empty().unwrap(),
             _ => {
@@ -249,11 +250,11 @@ impl HaProcessing {
     ) -> (f64, f64, f64) {
         let (alt, az) = match target {
             Target::Moon => {
-                vprintln!("Calculating position for Moon");
+                info!("Calculating position for Moon");
                 lunar::position_from_lat_lon_and_time(obs_latitude as f64, obs_longitude as f64, ts)
             }
             Target::Sun => {
-                vprintln!("Calculating position for Sun");
+                info!("Calculating position for Sun");
                 solar::position_from_lat_lon_and_time(obs_latitude as f64, obs_longitude as f64, ts)
             }
         };
@@ -267,7 +268,7 @@ impl HaProcessing {
         buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
     }
 
-    pub fn finalize(&mut self, out_path: &str) -> error::Result<&str> {
+    pub fn finalize(&mut self, out_path: &str) -> Result<()> {
         if self.frame_count > 0 {
             let mut final_buffer = self.buffer.get_finalized().unwrap();
 
@@ -286,11 +287,9 @@ impl HaProcessing {
             }
 
             let (stackmin, stackmax) = final_buffer.get_min_max_all_channel();
-            vprintln!(
+            info!(
                 "    Stack Min/Max : {}, {} ({} images)",
-                stackmin,
-                stackmax,
-                self.frame_count
+                stackmin, stackmax, self.frame_count
             );
 
             if !self.mask.is_empty() {
@@ -308,16 +307,15 @@ impl HaProcessing {
             final_buffer.normalize_to_16bit_with_max(maxval / (self.pct_of_max / 100.0));
             //}
 
-            vprintln!(
+            info!(
                 "Final image size: {}, {}",
-                final_buffer.width,
-                final_buffer.height
+                final_buffer.width, final_buffer.height
             );
-            final_buffer.save(out_path);
+            final_buffer.save(out_path).expect("Failed to save image");
 
-            ok!()
+            Ok(())
         } else {
-            Err("No frames processed, not saving an empty buffer")
+            Err(anyhow!("No frames processed, not saving an empty buffer"))
         }
     }
 
@@ -415,17 +413,13 @@ impl HaProcessing {
                                     initial_rotation
                                 };
                                 let do_rotation = initial_rotation - rotation;
-                                vprintln!(
+                                info!(
                                     "Rotation for frame is {} for az/alt {},{} at time {:?}",
-                                    rotation,
-                                    az,
-                                    alt,
-                                    &frame_buffer.timestamp
+                                    rotation, az, alt, &frame_buffer.timestamp
                                 );
-                                vprintln!(
+                                info!(
                                     "Initial rotation was {}, effective rotation is {}",
-                                    start_rot,
-                                    do_rotation
+                                    start_rot, do_rotation
                                 );
                                 do_rotation.to_radians()
                             } else {
@@ -439,7 +433,7 @@ impl HaProcessing {
                             ) {
                                 Ok(_) => {}
                                 Err(why) => {
-                                    eprintln!("Error drizzling frame: {}", why);
+                                    error!("Error drizzling frame: {}", why);
                                 }
                             }
                         }
@@ -469,10 +463,9 @@ impl HaProcessing {
             .map(|i| {
                 let frame_buffer = ser_file.get_frame(i).unwrap();
                 let qual = quality::get_quality_estimation(&frame_buffer.buffer);
-                vprintln!(
+                info!(
                     "Quality value of frame {} is {}",
-                    ser_file.source_file,
-                    qual
+                    ser_file.source_file, qual
                 );
                 FrameRecord {
                     source_file: ser_file.source_file.to_string(),
@@ -538,8 +531,8 @@ impl HaProcessing {
 
         self.process_frame_records(&limited_frame_records, enable_rotation, initial_rotation);
 
-        vprintln!("Total frames considered: {}", frame_records.len());
-        vprintln!("Limited to top {}% of frames", limit_top_pct);
-        vprintln!("Processed with {} frames", limited_frame_records.len());
+        info!("Total frames considered: {}", frame_records.len());
+        info!("Limited to top {}% of frames", limit_top_pct);
+        info!("Processed with {} frames", limited_frame_records.len());
     }
 }

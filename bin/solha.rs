@@ -1,10 +1,9 @@
-use solhat::print;
 mod subs;
 use subs::runnable::RunnableSubcommand;
 use subs::*;
 
-// use std::ffi::OsString;
-// use std::path::PathBuf;
+#[macro_use]
+extern crate stump;
 
 extern crate wild;
 use clap::{Parser, Subcommand};
@@ -39,8 +38,13 @@ enum SolHa {
 fn main() {
     let args = Cli::parse_from(wild::args());
 
+    stump::set_min_log_level(stump::LogEntryLevel::DEBUG);
+    info!("Initialized logging"); // INFO, which means that this won't be seen
+                                  // unless the user overrides via environment
+                                  // variable.
+
     if args.verbose {
-        print::set_verbose(true);
+        stump::set_verbose(true);
     }
 
     match args.command {

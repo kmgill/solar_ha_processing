@@ -1,13 +1,13 @@
-use crate::{ser, vprintln};
+use crate::ser;
 
-use sciimg::{enums::ImageMode, error, image, path};
-
+use anyhow::{anyhow, Result};
 use rayon::prelude::*;
+use sciimg::{enums::ImageMode, image, path};
 use std::sync::{Arc, Mutex};
 
-pub fn build_mean_buffer(ser_file_path: &str) -> error::Result<image::Image> {
+pub fn build_mean_buffer(ser_file_path: &str) -> Result<image::Image> {
     if !path::file_exists(ser_file_path) {
-        return Err("File not found");
+        return Err(anyhow!("File not found"));
     }
 
     let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Failed to load SER file");
@@ -29,10 +29,7 @@ pub fn build_mean_buffer(ser_file_path: &str) -> error::Result<image::Image> {
 }
 
 // Computes a simple mean stack of frames across a list of ser files.
-pub fn compute_mean(
-    ser_files: &Vec<&str>,
-    _skip_glitch_frames: bool,
-) -> error::Result<image::Image> {
+pub fn compute_mean(ser_files: &Vec<&str>, _skip_glitch_frames: bool) -> Result<image::Image> {
     let mut mean_buffer = build_mean_buffer(ser_files[0]).unwrap();
     let buffer_mtx = Arc::new(Mutex::new(&mut mean_buffer));
 
@@ -40,7 +37,7 @@ pub fn compute_mean(
 
     for ser_file_path in ser_files {
         if !path::file_exists(ser_file_path) {
-            return Err("File not found");
+            return Err(anyhow!("File not found"));
         }
 
         let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Failed to load SER file");
@@ -72,6 +69,6 @@ pub fn compute_mean(
         Ok(mean_buffer)
     } else {
         eprintln!("No files used");
-        Err("No files used")
+        Err(anyhow!("No files used"))
     }
 }

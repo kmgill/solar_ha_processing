@@ -1,10 +1,7 @@
 use crate::subs::runnable::RunnableSubcommand;
-
-use solhat::{processing, ser, vprintln};
-
-use sciimg::{image, path, quality};
-
 use rayon::prelude::*;
+use sciimg::{image, path, quality};
+use solhat::{processing, ser};
 use std::fs;
 use std::process;
 
@@ -44,7 +41,7 @@ impl RunnableSubcommand for Extract {
         let flat_frame = match &self.flat {
             Some(f) => {
                 if !path::file_exists(f) {
-                    eprintln!("Error: Flat file not found: {}", f);
+                    error!("Error: Flat file not found: {}", f);
                 }
 
                 processing::HaProcessing::create_mean_from_ser(f).unwrap()
@@ -55,7 +52,7 @@ impl RunnableSubcommand for Extract {
         let dark_frame = match &self.dark {
             Some(f) => {
                 if !path::file_exists(f) {
-                    eprintln!("Error: Dark file not found: {}", f);
+                    error!("Error: Dark file not found: {}", f);
                 }
 
                 processing::HaProcessing::create_mean_from_ser(f).unwrap()
@@ -66,7 +63,7 @@ impl RunnableSubcommand for Extract {
         let dark_flat_frame = match &self.darkflat {
             Some(f) => {
                 if !path::file_exists(f) {
-                    eprintln!("Error: Dark flat file not found: {}", f);
+                    error!("Error: Dark flat file not found: {}", f);
                 }
 
                 processing::HaProcessing::create_mean_from_ser(f).unwrap()
@@ -76,7 +73,7 @@ impl RunnableSubcommand for Extract {
 
         self.input_files.iter().for_each(|ser_file_path| {
             if !path::file_exists(ser_file_path) {
-                eprintln!("Error: Specified file not found: {}", ser_file_path);
+                error!("Error: Specified file not found: {}", ser_file_path);
                 process::exit(2);
             }
 
@@ -108,7 +105,7 @@ impl RunnableSubcommand for Extract {
                 let sd = quality::get_quality_estimation(&frame.buffer);
 
                 if sd < min_sigma || sd > max_sigma {
-                    vprintln!("Frame #{} is outside of sigma range ({})", i, sd);
+                    warn!("Frame #{} is outside of sigma range ({})", i, sd);
                     return;
                 }
 
@@ -128,11 +125,14 @@ impl RunnableSubcommand for Extract {
                 vprintln!("Frame #{} Output: {}", i, frame_output_path);
 
                 if !path::parent_exists_and_writable(&frame_output_path) {
-                    eprintln!("Error: Output file path cannot be found or is unwritable");
+                    error!("Error: Output file path cannot be found or is unwritable");
                     process::exit(3);
                 }
 
-                frame.buffer.save(&frame_output_path);
+                frame
+                    .buffer
+                    .save(&frame_output_path)
+                    .expect("Failed to save image");
             });
         });
     }

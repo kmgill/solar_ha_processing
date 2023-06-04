@@ -2,7 +2,6 @@ use crate::subs::runnable::RunnableSubcommand;
 
 use sciimg::vector::Vector;
 use sciimg::{enums::ImageMode, imagebuffer, medianblur, path, prelude::ImageBuffer};
-use solhat::vprintln;
 
 use std::process;
 
@@ -55,7 +54,7 @@ fn overlay_image_buffers(bottom: &ImageBuffer, top: &ImageBuffer) -> ImageBuffer
 impl RunnableSubcommand for Composite {
     fn run(&self) {
         if !path::parent_exists_and_writable(self.output.as_str()) {
-            eprintln!(
+            error!(
                 "Error: Output parent directory does not exist or is unwritable: {}",
                 path::get_parent(self.output.as_str())
             );
@@ -63,36 +62,36 @@ impl RunnableSubcommand for Composite {
         }
 
         if !path::file_exists(self.input.as_str()) {
-            eprintln!("Error: Input file not found: {}", self.input);
+            error!("Error: Input file not found: {}", self.input);
             process::exit(2);
         }
 
         // Open input image
-        vprintln!("Opening image at {}", self.input);
+        info!("Opening image at {}", self.input);
         let orig_image =
             imagebuffer::ImageBuffer::from_file(&self.input).expect("Error: failed to load file");
 
         // Create a median-blurred image, normalized to between 0 and 1
-        vprintln!("Applying median blur filter to overlay layer");
+        info!("Applying median blur filter to overlay layer");
         let blurred = medianblur::median_blur(&orig_image, 70)
             .normalize(0.0, 1.0)
             .unwrap();
 
         // Create an inverted-chromosphere copy, normalize to between 0 and 1
-        vprintln!("Inverting chromosphere layer");
+        info!("Inverting chromosphere layer");
         let inverted = invert_image_buffer(&orig_image)
             .normalize(0.0, 1.0)
             .unwrap();
 
         // Overlay the blurred image over the inverted image
-        vprintln!("Overlaying blurred image to chromosphere layer");
+        info!("Overlaying blurred image to chromosphere layer");
         let overlaid = overlay_image_buffers(&inverted, &blurred);
 
         // Normalize to within 16bit boundaries
-        vprintln!("Normalizing to 16 bit boundaries");
+        info!("Normalizing to 16 bit boundaries");
         let normalized = overlaid.normalize(0.0, 65535.0).unwrap();
 
-        vprintln!("Compositing chromosphere and prominence layers");
+        info!("Compositing chromosphere and prominence layers");
         let middle_x = orig_image.width / 2;
         let middle_y = orig_image.height / 2;
 
@@ -124,7 +123,10 @@ impl RunnableSubcommand for Composite {
         }
 
         // Save resulting image to disk
-        vprintln!("Saving image to {}", self.output);
-        composited.save(self.output.as_str(), ImageMode::U16BIT);
+        info!("Saving image to {}", self.output);
+        composited.mode = ImageMode::U16BIT;
+        composited
+            .save(self.output.as_str())
+            .expect("Failed to save image");
     }
 }

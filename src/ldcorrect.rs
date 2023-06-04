@@ -1,12 +1,10 @@
 use crate::point::Point;
-use crate::veprintln;
-use crate::vprintln;
+use anyhow::{anyhow, Result};
 use sciimg::matrix::Matrix;
 use sciimg::path;
 use sciimg::prelude::*;
 use sciimg::vector::Vector;
 use sciimg::Dn;
-
 use std::process;
 
 trait AvgValueAtRadius {
@@ -42,7 +40,7 @@ impl AvgValueAtRadius for Image {
 
 pub fn print_radial_intensities(image_file: &String, radius_pixels: usize) {
     if !path::file_exists(image_file) {
-        eprintln!("ERROR: File not found: {}", image_file);
+        error!("ERROR: File not found: {}", image_file);
         process::exit(1);
     }
 
@@ -52,7 +50,7 @@ pub fn print_radial_intensities(image_file: &String, radius_pixels: usize) {
     let middle_y = img.height / 2;
 
     if middle_x + radius_pixels > img.width {
-        eprintln!(
+        error!(
             "ERROR: Radius {} exceeds image bounds. {}",
             radius_pixels, img.width
         );
@@ -95,14 +93,14 @@ pub fn limb_darkening_correction(
     ld_coefficients: &Vec<f64>,
     composite_gradient_margin: f64,
     inverted_chromosphere: bool,
-) -> error::Result<&'static str> {
+) -> Result<()> {
     if !path::file_exists(image_file) {
-        eprintln!("ERROR: File not found: {}", image_file);
+        error!("ERROR: File not found: {}", image_file);
         process::exit(1);
     }
 
     if !path::parent_exists_and_writable(output_file) {
-        eprintln!("ERROR: Output directory not found or is not writable");
+        error!("ERROR: Output directory not found or is not writable");
         process::exit(2);
     }
 
@@ -118,8 +116,10 @@ pub fn limb_darkening_correction(
     ) {
         Ok(corrected_output) => {
             vprintln!("Writing corrected image to {}", output_file);
-            corrected_output.save(output_file);
-            Ok("done")
+            corrected_output
+                .save(output_file)
+                .expect("Failed to save image");
+            Ok(())
         }
         Err(why) => Err(why),
     }
@@ -131,19 +131,18 @@ pub fn limb_darkening_correction_on_image(
     ld_coefficients: &Vec<f64>,
     composite_gradient_margin: f64,
     inverted_chromosphere: bool,
-) -> error::Result<Image> {
-    vprintln!(
+) -> Result<Image> {
+    info!(
         "Generating output buffer of size {}x{}",
-        img.width,
-        img.height
+        img.width, img.height
     );
     //let mut corrected_output = ImageBuffer::new(img.width, img.height).unwrap();
 
     if ld_coefficients.is_empty()
         || (ld_coefficients.len() > 1 && ld_coefficients.len() != img.num_bands())
     {
-        veprintln!("Invalid number of limb darkening coefficients");
-        return Err("Invalid number of limb darkening coefficients");
+        error!("Invalid number of limb darkening coefficients");
+        return Err(anyhow!("Invalid number of limb darkening coefficients"));
     }
 
     let mut corrected_output =
@@ -152,12 +151,11 @@ pub fn limb_darkening_correction_on_image(
     let middle_x = img.width / 2;
     let middle_y = img.height / 2;
     if middle_x + radius_pixels > img.width {
-        veprintln!(
+        error!(
             "ERROR: Radius {} exceeds image bounds. {}",
-            radius_pixels,
-            img.width
+            radius_pixels, img.width
         );
-        return Err("Radius exceeds image bounds");
+        return Err(anyhow!("Radius exceeds image bounds"));
     }
 
     let mid_vec = Vector::new(middle_x as f64, middle_y as f64, 0.0);
@@ -184,15 +182,14 @@ pub fn limb_darkening_correction_on_image(
             center_intensities[band] += img.avg_value_at_radius(r as f64, band) as f64;
         }
         center_intensities[band] /= center_value_radius as f64;
-        vprintln!(
+        info!(
             "Center intensity for band #{}: {}",
-            band,
-            center_intensities[band]
+            band, center_intensities[band]
         );
 
         let limb_intensity = img.avg_value_at_radius(radius_pixels as f64, band) as Dn;
-        vprintln!("Limb intensity for band #{}: {}", band, limb_intensity);
-        vprintln!(
+        info!("Limb intensity for band #{}: {}", band, limb_intensity);
+        info!(
             "Computed limb darkening coefficient: {}",
             ((center_intensities[band] as Dn - limb_intensity) / center_intensities[band] as Dn)
         );
@@ -204,9 +201,9 @@ pub fn limb_darkening_correction_on_image(
     }
 
     let (_, data_max) = img.get_min_max_all_channel();
-    vprintln!("Chromosphere inversion maximum: {}", data_max);
+    info!("Chromosphere inversion maximum: {}", data_max);
 
-    vprintln!("Computing pixel corrections");
+    info!("Computing pixel corrections");
     for y in 0..img.height {
         for x in 0..img.width {
             let p = Vector::new(x as f64, y as f64, 0.0);

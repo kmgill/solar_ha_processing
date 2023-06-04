@@ -1,7 +1,6 @@
 use crate::subs::runnable::RunnableSubcommand;
-
 use sciimg::path;
-use solhat::{ldcorrect, vprintln};
+use solhat::ldcorrect;
 use std::process;
 
 #[derive(clap::Args)]
@@ -34,12 +33,12 @@ pub struct LdCorrect {
 impl RunnableSubcommand for LdCorrect {
     fn run(&self) {
         if !path::file_exists(&self.input_file) {
-            eprintln!("ERROR: File not found: {}", &self.input_file);
+            error!("ERROR: File not found: {}", &self.input_file);
             process::exit(1);
         }
 
         if !path::parent_exists_and_writable(&self.output) {
-            eprintln!("ERROR: Output directory not found or is not writable");
+            error!("ERROR: Output directory not found or is not writable");
             process::exit(2);
         }
 
