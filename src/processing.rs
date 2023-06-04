@@ -275,12 +275,15 @@ impl HaProcessing {
             //     self.buffer.apply_weight_on_band(1.0 / self.frame_count as f32, band);
             // }
 
-            let crop_width = (self.crop_width as f32 * self.drizzle_scale.value()).round() as usize;
-            let crop_height =
-                (self.crop_height as f32 * self.drizzle_scale.value()).round() as usize;
-            let x = (final_buffer.width - crop_width) / 2;
-            let y = (final_buffer.height - crop_height) / 2;
-            final_buffer.crop(x, y, crop_width, crop_height);
+            if self.crop_height > 0 && self.crop_width > 0 {
+                let crop_width =
+                    (self.crop_width as f32 * self.drizzle_scale.value()).round() as usize;
+                let crop_height =
+                    (self.crop_height as f32 * self.drizzle_scale.value()).round() as usize;
+                let x = (final_buffer.width - crop_width) / 2;
+                let y = (final_buffer.height - crop_height) / 2;
+                final_buffer.crop(x, y, crop_width, crop_height);
+            }
 
             let (stackmin, stackmax) = final_buffer.get_min_max_all_channel();
             vprintln!(

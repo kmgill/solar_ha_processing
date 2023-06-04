@@ -14,8 +14,8 @@ else
     VERSION=""
 fi
 
-MOON_ROOT=Moon-ASI183MC
-MOON_DARK_ROOT=Moon-ASI183MC-Dark
+MOON_ROOT=Moon
+MOON_DARK_ROOT=Moon_-_Dark
 
 # location.sh should be an executable script setting the variables
 # LOC_LATITUDE and LOC_LONGITUDE for the location the observations
@@ -24,20 +24,18 @@ source location.sh
 
 MOON_MAX_SCALE=95
 
-CROP_WIDTH=2600
-CROP_HEIGHT=2600
-
+CROP_WIDTH=2400
+CROP_HEIGHT=2400
 check_file=`ls -1 $DATAROOT/$MOON_ROOT/*/*ser | head -n 1`
 BIT_DEPTH=`solha ser-info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
 
-FRAME_LIMIT=2000
+FRAME_LIMIT=1000
 
 DATA_TS=`ls $DATAROOT/$MOON_ROOT/ | tail -n 1`
 
-
-MOON_THRESH=5000
-MOON_SIGMA_MIN=280.0
+MOON_THRESH=2000
+MOON_SIGMA_MIN=0.0
 MOON_SIGMA_MAX=5000.0
 MOON_TOP_PCT=40
 DRIZZLE_SCALE=1.5
@@ -74,11 +72,7 @@ solha -v process -i $DATAROOT/$MOON_ROOT/*/Moon*ser \
                 -t $MOON_THRESH \
                 -l $LOC_LATITUDE \
                 -L $LOC_LONGITUDE \
-                -w $CROP_WIDTH \
-                -H $CROP_HEIGHT \
                 -q $MOON_TOP_PCT \
-                -S $MOON_SIGMA_MAX \
-                -s $MOON_SIGMA_MIN \
                 -n $FRAME_LIMIT \
                 -T moon \
                 -u $DRIZZLE_SCALE \
