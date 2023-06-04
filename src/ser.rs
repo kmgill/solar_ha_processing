@@ -222,7 +222,7 @@ impl SerFile {
         let image_frame_size_bytes = self.image_frame_size_bytes();
         let image_frame_start_index = self.image_frame_start_index(frame_num);
 
-        vprintln!(
+        info!(
             "Extracting image frame #{} of {} from {}. Size {} at byte index {}",
             frame_num,
             self.frame_count,
