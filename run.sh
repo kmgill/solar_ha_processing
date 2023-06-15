@@ -18,6 +18,7 @@ PHOTO_ROOT=Sun_-_Whitelight_-_Tamron
 PHOTO_DARK_ROOT=Sun_-_Whitelight_-_Tamron_-_Dark
 PHOTO_FLAT_ROOT=Sun_-_Whitelight_-_Tamron_-_Flat
 PHOTO_DARK_FLAT_ROOT=Sun_-_Whitelight_-_Tamron_-_Flat_Dark
+BIAS_ROOT=Sun_-_Bias
 
 
 # location.sh should be an executable script setting the variables
@@ -61,16 +62,16 @@ if [ $BIT_DEPTH -eq 8 ]; then
 elif [ $BIT_DEPTH -eq 16 ]; then
     # 16 Bit
     CHROME_THRESH=14560
-    CHROME_SIGMA_MIN=349
+    CHROME_SIGMA_MIN=300
     CHROME_SIGMA_MAX=1285
-    CHROME_TOP_PCT=40
+    CHROME_TOP_PCT=30
 
-    PROM_THRESH=50000
+    PROM_THRESH=60000
     PROM_SIGMA_MIN=349
     PROM_SIGMA_MAX=1285
     PROM_TOP_PCT=20
 
-    PHOTO_THRESH=20560
+    PHOTO_THRESH=15000
     PHOTO_SIGMA_MIN=155.0
     PHOTO_SIGMA_MAX=771
     PHOTO_TOP_PCT=40
@@ -100,6 +101,7 @@ echo Flat Root: $DATAROOT/$FLAT_ROOT
 echo Dark Root: $DATAROOT/$DARK_ROOT
 echo Prominance Dark Root: $DATAROOT/$PROM_DARK_ROOT
 echo Dark Flat Root: $DATAROOT/$DARK_FLAT_ROOT
+echo Bias Root:  $DATAROOT/$BIAS_ROOT
 echo Expected Bit Depth: $BIT_DEPTH
 echo Data Timestamp: $DATA_TS
 echo Version Text: $VERSION
@@ -157,6 +159,7 @@ echo
 DARK_FRAME=$DATAROOT/Dark_${DATA_TS}${VERSION}.png
 FLAT_FRAME=$DATAROOT/Flat_${DATA_TS}${VERSION}.png
 DARKFLAT_FRAME=$DATAROOT/Dark-Flat_${DATA_TS}${VERSION}.png
+BIAS_FRAME=$DATAROOT/Bias_${DATA_TS}${VERSION}.png
 
 echo Creating calibration frames...
 if [ ! -f $DARK_FRAME ]; then
@@ -180,6 +183,13 @@ if [ ! -f $DARKFLAT_FRAME ]; then
     fi
 fi
 
+if [ ! -f $BIAS_FRAME ]; then
+    solha -v mean -i $DATAROOT/$BIAS_ROOT/*/*ser -o $BIAS_FRAME
+    if [ ! -f $BIAS_FRAME -o $? -ne 0 ]; then
+        echo Error: Failed to generate bias frame
+    fi
+fi
+
 echo Generating threshold test frame...
 solha -v thresh-test -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -d $DARK_FRAME \
@@ -193,64 +203,88 @@ if [ $? -ne 0 ]; then
 fi
  
 
-echo "Starting Chromosphere Processing..."
-solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
-                -d $DARK_FRAME \
-                -f $FLAT_FRAME \
-                -D $DARKFLAT_FRAME \
-                -o $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
-                -t $CHROME_THRESH \
-                -w $CROP_WIDTH \
-                -H $CROP_HEIGHT \
-                -l $LOC_LATITUDE \
-                -L $LOC_LONGITUDE \
-                -q $CHROME_TOP_PCT \
-                -S $CHROME_SIGMA_MAX \
-                -s $CHROME_SIGMA_MIN \
-                -n $FRAME_LIMIT \
-                -I 0 \
-                -T sun \
-                -u $DRIZZLE_SCALE \
-                -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
-                #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
+# echo "Starting Chromosphere Processing..."
+# solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
+#                 -d $DARK_FRAME \
+#                 -f $FLAT_FRAME \
+#                 -D $DARKFLAT_FRAME \
+#                 -o $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
+#                 -t $CHROME_THRESH \
+#                 -w $CROP_WIDTH \
+#                 -H $CROP_HEIGHT \
+#                 -l $LOC_LATITUDE \
+#                 -L $LOC_LONGITUDE \
+#                 -q $CHROME_TOP_PCT \
+#                 -S $CHROME_SIGMA_MAX \
+#                 -s $CHROME_SIGMA_MIN \
+#                 -n $FRAME_LIMIT \
+#                 -I 0 \
+#                 -T sun \
+#                 -u $DRIZZLE_SCALE \
+#                 -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
+#                 #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
  
-echo "Creating Limb Darkening Corrected Image..."
-solha -v ld-correct -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
-                    -r 770 \
-                    -l 0.56 \
-                    -m 10 \
-                    -I \
-                    -o $DATAROOT/Sun_Chrome_${DATA_TS}_ldcorrected${VERSION}.png  2>&1 | tee $DATAROOT/chrome_ldcorrection_${DATA_TS}${VERSION}.log
+# echo "Creating Limb Darkening Corrected Image..."
+# solha -v ld-correct -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
+#                     -r 770 \
+#                     -l 0.56 \
+#                     -m 10 \
+#                     -I \
+#                     -o $DATAROOT/Sun_Chrome_${DATA_TS}_ldcorrected${VERSION}.png  2>&1 | tee $DATAROOT/chrome_ldcorrection_${DATA_TS}${VERSION}.log
 
-echo "Creating Invert Composited Image..."
-solha -v composite -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
-                    -r 770 \
-                    -o $DATAROOT/Sun_Chrome_${DATA_TS}_composite${VERSION}.png  2>&1 | tee $DATAROOT/chrome_composite_${DATA_TS}${VERSION}.log
+# echo "Creating Invert Composited Image..."
+# solha -v composite -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
+#                     -r 770 \
+#                     -o $DATAROOT/Sun_Chrome_${DATA_TS}_composite${VERSION}.png  2>&1 | tee $DATAROOT/chrome_composite_${DATA_TS}${VERSION}.log
 
-exit
-# if [ $HAS_PROM -eq 1 ]; then
-#     echo "Starting Prominance Processing..."
-#     solha -v process -i $DATAROOT/$PROM_ROOT/*/*ser \
-#                     -d $DATAROOT/$PROM_DARK_ROOT/*/*ser \
-#                     -f $DATAROOT/$FLAT_ROOT/*/*ser \
-#                     -D $DATAROOT/$DARK_FLAT_ROOT/*/*ser \
-#                     -o $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png \
-#                     -t $PROM_THRESH \
-#                     -w $CROP_WIDTH \
-#                     -H $CROP_HEIGHT \
-#                     -l $LOC_LATITUDE \
-#                     -L $LOC_LONGITUDE \
-#                     -q $PROM_TOP_PCT \
-#                     -S $PROM_SIGMA_MAX \
-#                     -s $PROM_SIGMA_MIN \
-#                     -n $FRAME_LIMIT \
-#                     -I $INITIAL_ROTATION \
-#                     -T sun \
-#                     -u $DRIZZLE_SCALE \
-#                     -P $PROM_MAX_SCALE 2>&1 | tee $DATAROOT/prominance_${DATA_TS}${VERSION}.log
-#                     #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
 
-# fi
+if [ $HAS_PROM -eq 1 ]; then
+
+    PROM_DARK_FRAME=$DATAROOT/Prom_Dark_${DATA_TS}${VERSION}.png
+    echo Creating calibration frames...
+    if [ ! -f $PROM_DARK_FRAME ]; then
+        solha -v mean -i $DATAROOT/$PROM_DARK_ROOT/*/*ser -o $PROM_DARK_FRAME
+        if [ ! -f $PROM_DARK_FRAME -o $? -ne 0 ]; then
+            echo Error: Failed to generate dark frame
+        fi
+    fi
+
+
+    echo Generating prominence threshold test frame...
+    solha -v thresh-test -i $DATAROOT/$PROM_ROOT/*/*ser \
+                    -d $PROM_DARK_FRAME \
+                    -f $FLAT_FRAME \
+                    -D $DARKFLAT_FRAME \
+                    -o $DATAROOT/ThreshTestProm_${DATA_TS}${VERSION}.png \
+                    -t $PROM_THRESH
+
+    if [ $? -ne 0 ]; then
+        echo Warning: Failed to generate threshold test image
+    fi
+
+
+    echo "Starting Prominance Processing..."
+    solha -v process -i $DATAROOT/$PROM_ROOT/*/*ser \
+                    -d $DATAROOT/$PROM_DARK_ROOT/*/*ser \
+                    -f $DATAROOT/$FLAT_ROOT/*/*ser \
+                    -D $DATAROOT/$DARK_FLAT_ROOT/*/*ser \
+                    -o $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png \
+                    -t $PROM_THRESH \
+                    -w $CROP_WIDTH \
+                    -H $CROP_HEIGHT \
+                    -l $LOC_LATITUDE \
+                    -L $LOC_LONGITUDE \
+                    -q $PROM_TOP_PCT \
+                    -S $PROM_SIGMA_MAX \
+                    -s $PROM_SIGMA_MIN \
+                    -n $FRAME_LIMIT \
+                    -I 0 \
+                    -T sun \
+                    -u $DRIZZLE_SCALE \
+                    -P $PROM_MAX_SCALE 2>&1 | tee $DATAROOT/prominance_${DATA_TS}${VERSION}.log
+                    #-m $MASKROOT/Sun_Prominence_1200x1200_v2.png
+
+fi
 
 if [ $HAS_PHOTO -eq 1 ]; then
 
@@ -258,7 +292,7 @@ if [ $HAS_PHOTO -eq 1 ]; then
     PHOTO_FLAT_FRAME=$DATAROOT/Photo_Flat_${DATA_TS}${VERSION}.png
     PHOTO_DARKFLAT_FRAME=$DATAROOT/Photo_Dark-Flat_${DATA_TS}${VERSION}.png
 
-    echo Creating photosphere calibration frames...
+    # echo Creating photosphere calibration frames...
     solha -v mean -i $DATAROOT/$PHOTO_DARK_ROOT/*/*ser -o $PHOTO_DARK_FRAME
     if [ ! -f $PHOTO_DARK_FRAME -o $? -ne 0 ]; then
         echo Error: Failed to generate photosphere dark frame
@@ -274,7 +308,8 @@ if [ $HAS_PHOTO -eq 1 ]; then
         echo Error: Failed to generate photosphere flat-dark frame
     fi
 
-    echo Generating threshold test frame...
+
+    # echo Generating threshold test frame...
     solha -v thresh-test -i $DATAROOT/$PHOTO_ROOT/*/*ser \
                     -d $PHOTO_DARK_FRAME \
                     -f $PHOTO_FLAT_FRAME \
@@ -282,6 +317,7 @@ if [ $HAS_PHOTO -eq 1 ]; then
                     -o $DATAROOT/Photo_ThreshTest_${DATA_TS}${VERSION}.png \
                     -t $PHOTO_THRESH
 
+    
     if [ $? -ne 0 ]; then
         echo Warning: Failed to generate photosphere threshold test image
     fi
@@ -300,7 +336,7 @@ if [ $HAS_PHOTO -eq 1 ]; then
                 -q $PHOTO_TOP_PCT \
                 -S $PHOTO_SIGMA_MAX \
                 -s $PHOTO_SIGMA_MIN \
-                -I $INITIAL_ROTATION \
+                -I 0 \
                 -T sun \
                 -u $DRIZZLE_SCALE \
                 -P $PHOTO_MAX_SCALE 2>&1 | tee $DATAROOT/photosphere_${DATA_TS}${VERSION}.log

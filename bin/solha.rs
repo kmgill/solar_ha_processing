@@ -33,6 +33,7 @@ enum SolHa {
     LdCorrect(ldcorrect::LdCorrect),
     ThreshTest(threshtest::ThreshTest),
     Median(median::Median),
+    PreProcess(preprocess::PreProcess),
 }
 
 fn main() {
@@ -82,6 +83,9 @@ fn main() {
             args.run();
         }
         SolHa::Median(args) => {
+            args.run();
+        }
+        SolHa::PreProcess(args) => {
             args.run();
         }
     };
