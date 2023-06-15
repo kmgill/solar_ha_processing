@@ -1,5 +1,6 @@
 use crate::subs::runnable::RunnableSubcommand;
 use rayon::prelude::*;
+use sciimg::prelude::*;
 use sciimg::{image, path, quality};
 use solhat::enums::Target;
 use solhat::processing::HaProcessing;
@@ -21,10 +22,10 @@ pub struct PreProcess {
     #[clap(long, short, help = "Quality estimation sorting")]
     quality: bool,
 
-    #[clap(long, short, help = "Minimum sigma value")]
+    #[clap(long, short = 's', help = "Minimum sigma value")]
     minsigma: Option<f32>,
 
-    #[clap(long, short = 'M', help = "Maximum sigma value")]
+    #[clap(long, short = 'S', help = "Maximum sigma value")]
     maxsigma: Option<f32>,
 
     #[clap(long, short, help = "Flat frame file")]
@@ -49,6 +50,12 @@ pub struct PreProcess {
 
     #[clap(long, short, help = "Object detection threshold")]
     threshold: Option<f32>,
+
+    #[clap(long, short, help = "Crop width")]
+    width: Option<usize>,
+
+    #[clap(long, short = 'H', help = "Crop height")]
+    height: Option<usize>,
 
     #[clap(
         long,
@@ -82,13 +89,19 @@ impl RunnableSubcommand for PreProcess {
         let obs_latitude = self.latitude;
         let obs_longitude = self.longitude;
 
+        let crop_width = self.width.unwrap_or(0);
+        let crop_height = self.height.unwrap_or(0);
+
         let flat_frame = match &self.flat {
             Some(f) => {
                 if !path::file_exists(f) {
                     error!("Error: Flat file not found: {}", f);
                 }
 
-                processing::HaProcessing::create_mean_from_ser(f).unwrap()
+                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                    "SER" => processing::HaProcessing::create_mean_from_ser(f).unwrap(),
+                    _ => Image::open_str(&f).unwrap(),
+                }
             }
             None => image::Image::new_empty().unwrap(),
         };
@@ -99,7 +112,10 @@ impl RunnableSubcommand for PreProcess {
                     error!("Error: Dark file not found: {}", f);
                 }
 
-                processing::HaProcessing::create_mean_from_ser(f).unwrap()
+                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                    "SER" => processing::HaProcessing::create_mean_from_ser(f).unwrap(),
+                    _ => Image::open_str(&f).unwrap(),
+                }
             }
             None => image::Image::new_empty().unwrap(),
         };
@@ -107,10 +123,13 @@ impl RunnableSubcommand for PreProcess {
         let dark_flat_frame = match &self.darkflat {
             Some(f) => {
                 if !path::file_exists(f) {
-                    error!("Error: Dark flat file not found: {}", f);
+                    error!("Error: Dark Flat file not found: {}", f);
                 }
 
-                processing::HaProcessing::create_mean_from_ser(f).unwrap()
+                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                    "SER" => processing::HaProcessing::create_mean_from_ser(f).unwrap(),
+                    _ => Image::open_str(&f).unwrap(),
+                }
             }
             None => image::Image::new_empty().unwrap(),
         };
@@ -147,13 +166,6 @@ impl RunnableSubcommand for PreProcess {
                 frame
                     .buffer
                     .calibrate(&flat_frame, &dark_frame, &dark_flat_frame);
-
-                let sd = quality::get_quality_estimation(&frame.buffer);
-
-                if sd < min_sigma || sd > max_sigma {
-                    warn!("Frame #{} is outside of sigma range ({})", i, sd);
-                    return;
-                }
 
                 let offset = frame
                     .buffer
@@ -196,6 +208,23 @@ impl RunnableSubcommand for PreProcess {
                     }
                 }
 
+                let mut calibrated_buffer = drizzle_buffer
+                    .get_finalized()
+                    .expect("Failed to finalize drizzle buffer"); // Even though we're not actually drizzling anything
+
+                if crop_height > 0 && crop_width > 0 {
+                    let x = (ser_file.image_width - crop_width) / 2;
+                    let y = (ser_file.image_width - crop_height) / 2;
+                    calibrated_buffer.crop(x, y, crop_width, crop_height);
+                }
+
+                let sd = quality::get_quality_estimation(&calibrated_buffer);
+
+                if sd < min_sigma || sd > max_sigma {
+                    warn!("Frame #{} is outside of sigma range ({})", i, sd);
+                    return;
+                }
+
                 let new_extension = match self.quality {
                     true => {
                         format!("_{}_{:0width$}.png", (sd * 10000.0) as u32, i, width = 5)
@@ -216,8 +245,7 @@ impl RunnableSubcommand for PreProcess {
                     process::exit(3);
                 }
 
-                frame
-                    .buffer
+                calibrated_buffer
                     .save(&frame_output_path)
                     .expect("Failed to save image");
             });
