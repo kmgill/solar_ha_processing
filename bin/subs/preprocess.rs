@@ -219,7 +219,10 @@ impl RunnableSubcommand for PreProcess {
                 }
 
                 let sd = quality::get_quality_estimation(&calibrated_buffer);
-
+                if sd.is_nan() {
+                    warn!("Frame quality is NaN!");
+                }
+                info!("Quality of frame measured as {}", sd);
                 if sd < min_sigma || sd > max_sigma {
                     warn!("Frame #{} is outside of sigma range ({})", i, sd);
                     return;
@@ -238,7 +241,7 @@ impl RunnableSubcommand for PreProcess {
                     .replace(".ser", &new_extension)
                     .replace(".SER", &new_extension);
 
-                vprintln!("Frame #{} Output: {}", i, frame_output_path);
+                info!("Frame #{} Output: {}", i, frame_output_path);
 
                 if !path::parent_exists_and_writable(&frame_output_path) {
                     error!("Error: Output file path cannot be found or is unwritable");

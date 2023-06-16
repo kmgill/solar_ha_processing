@@ -11,7 +11,7 @@ pub mod util {
 pub fn position_from_lat_lon_and_time(lat: f64, lon: f64, ts: &timestamp::TimeStamp) -> (f64, f64) {
     let unixtime = ts.to_unix_timestamp();
 
-    vprintln!("Time {:?} converted to unix timestamp {}", ts, unixtime);
+    info!("Time {:?} converted to unix timestamp {}", ts, unixtime);
     let pos = sun::pos(unixtime * 1000, lat, lon);
 
     (pos.altitude.to_degrees(), pos.azimuth.to_degrees())
