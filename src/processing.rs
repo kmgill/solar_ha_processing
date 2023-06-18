@@ -462,7 +462,7 @@ impl HaProcessing {
             .into_par_iter()
             .map(|i| {
                 let frame_buffer = ser_file.get_frame(i).unwrap();
-                let qual = quality::get_quality_estimation(&frame_buffer.buffer);
+                let qual = quality::get_quality_estimation(&frame_buffer.buffer).unwrap_or(0.0);
                 info!(
                     "Quality value of frame {} is {}",
                     ser_file.source_file, qual

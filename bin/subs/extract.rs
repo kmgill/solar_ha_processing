@@ -102,7 +102,7 @@ impl RunnableSubcommand for Extract {
                     .buffer
                     .calibrate(&flat_frame, &dark_frame, &dark_flat_frame);
 
-                let sd = quality::get_quality_estimation(&frame.buffer);
+                let sd = quality::get_quality_estimation(&frame.buffer).unwrap_or(0.0);
 
                 if sd < min_sigma || sd > max_sigma {
                     warn!("Frame #{} is outside of sigma range ({})", i, sd);

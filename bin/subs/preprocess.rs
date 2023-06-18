@@ -218,7 +218,7 @@ impl RunnableSubcommand for PreProcess {
                     calibrated_buffer.crop(x, y, crop_width, crop_height);
                 }
 
-                let sd = quality::get_quality_estimation(&calibrated_buffer);
+                let sd = quality::get_quality_estimation(&calibrated_buffer).unwrap_or(0.0);
                 if sd.is_nan() {
                     warn!("Frame quality is NaN!");
                 }
