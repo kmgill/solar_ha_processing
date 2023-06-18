@@ -6,7 +6,9 @@ pub fn threshtest(frame: &Image, threshold: Dn) -> ImageBuffer {
         "Creating test visualization buffer of size {}x{}",
         frame.width, frame.height
     );
-    let mut out_img = ImageBuffer::new_with_fill(frame.width, frame.height, 0.0).unwrap();
+    let mut out_img =
+        ImageBuffer::new_with_fill_as_mode(frame.width, frame.height, 0.0, ImageMode::U8BIT)
+            .unwrap();
 
     info!("Checking threshold value {} across first frame", threshold);
     for y in 0..frame.height {
