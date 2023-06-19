@@ -245,7 +245,7 @@ solha -v pre-process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -n $FRAME_LIMIT \
                 2>&1 | tee $DATAROOT/chromosphere_pp_${DATA_TS}${VERSION}.log
 
-exit
+
 HAS_PROM=0
 if [ -d $DATAROOT/$PROM_ROOT ]; then
     HAS_PROM=1
