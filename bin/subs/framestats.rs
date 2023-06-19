@@ -66,7 +66,7 @@ impl RunnableSubcommand for FrameStats {
                 let rotation = parallacticangle::from_lat_azimuth_altitude(self.latitude as f64, az, alt);
                 let (min, max) = frame_buffer.buffer.get_min_max_all_channel();
 
-                let qual = quality::get_quality_estimation(&frame_buffer.buffer).unwrap_or(0.0);
+                let qual = quality::get_quality_estimation(&frame_buffer.buffer);
 
                 println!("{:>10}  {}-{:02}-{:02} {:02}:{:02}:{:02}.{:04}   {:.4} {:>10.4} {:>7}    {:>7}", i, 
                                                         frame_buffer.timestamp.year,

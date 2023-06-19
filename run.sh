@@ -61,14 +61,14 @@ if [ $BIT_DEPTH -eq 8 ]; then
     PHOTO_TOP_PCT=30
 elif [ $BIT_DEPTH -eq 16 ]; then
     # 16 Bit
-    CHROME_THRESH=14560
-    CHROME_SIGMA_MIN=300
-    CHROME_SIGMA_MAX=1285
+    CHROME_THRESH=20560
+    CHROME_SIGMA_MIN=0
+    CHROME_SIGMA_MAX=2
     CHROME_TOP_PCT=30
 
-    PROM_THRESH=60000
-    PROM_SIGMA_MIN=349
-    PROM_SIGMA_MAX=1285
+    PROM_THRESH=14000
+    PROM_SIGMA_MIN=0
+    PROM_SIGMA_MAX=2
     PROM_TOP_PCT=20
 
     PHOTO_THRESH=15000
@@ -204,25 +204,25 @@ fi
  
 
 # echo "Starting Chromosphere Processing..."
-# solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
-#                 -d $DARK_FRAME \
-#                 -f $FLAT_FRAME \
-#                 -D $DARKFLAT_FRAME \
-#                 -o $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
-#                 -t $CHROME_THRESH \
-#                 -w $CROP_WIDTH \
-#                 -H $CROP_HEIGHT \
-#                 -l $LOC_LATITUDE \
-#                 -L $LOC_LONGITUDE \
-#                 -q $CHROME_TOP_PCT \
-#                 -S $CHROME_SIGMA_MAX \
-#                 -s $CHROME_SIGMA_MIN \
-#                 -n $FRAME_LIMIT \
-#                 -I 0 \
-#                 -T sun \
-#                 -u $DRIZZLE_SCALE \
-#                 -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
-#                 #-m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
+solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
+                -d $DARK_FRAME \
+                -f $FLAT_FRAME \
+                -D $DARKFLAT_FRAME \
+                -o $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
+                -t $CHROME_THRESH \
+                -w $CROP_WIDTH \
+                -H $CROP_HEIGHT \
+                -l $LOC_LATITUDE \
+                -L $LOC_LONGITUDE \
+                -q $CHROME_TOP_PCT \
+                -S $CHROME_SIGMA_MAX \
+                -s $CHROME_SIGMA_MIN \
+                -n $FRAME_LIMIT \
+                -I 0 \
+                -T sun \
+                -u $DRIZZLE_SCALE \
+                -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
+                -m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
  
 # echo "Creating Limb Darkening Corrected Image..."
 # solha -v ld-correct -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
@@ -261,7 +261,6 @@ if [ $HAS_PROM -eq 1 ]; then
     if [ $? -ne 0 ]; then
         echo Warning: Failed to generate threshold test image
     fi
-
 
     echo "Starting Prominance Processing..."
     solha -v process -i $DATAROOT/$PROM_ROOT/*/*ser \

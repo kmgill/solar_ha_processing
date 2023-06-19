@@ -1,7 +1,7 @@
 use crate::subs::runnable::RunnableSubcommand;
 use rayon::prelude::*;
 use sciimg::prelude::*;
-use sciimg::{image, path, quality};
+use sciimg::{path, quality};
 use solhat::enums::Target;
 use solhat::processing::HaProcessing;
 use solhat::{drizzle, processing, ser};
@@ -37,6 +37,9 @@ pub struct PreProcess {
     #[clap(long, short = 'D', help = "Dark Flat frame file")]
     darkflat: Option<String>,
 
+    #[clap(long, short, help = "Bias frame file")]
+    bias: Option<String>,
+
     #[clap(long, short, help = "Observer latitude", allow_hyphen_values(true))]
     latitude: f32,
 
@@ -67,6 +70,12 @@ pub struct PreProcess {
 
     #[clap(long, short = 'T', help = "Target (Moon, Sun)")]
     target: Option<String>,
+
+    #[clap(long, short = 'u', help = "Drizze upscale (1.5, 2.0, 3.0")]
+    drizzle: Option<String>,
+
+    #[clap(long, short, help = "Number of frames (default=all)")]
+    number_of_frames: Option<usize>,
 }
 
 impl RunnableSubcommand for PreProcess {
@@ -92,6 +101,23 @@ impl RunnableSubcommand for PreProcess {
         let crop_width = self.width.unwrap_or(0);
         let crop_height = self.height.unwrap_or(0);
 
+        let drizzle_scale = match &self.drizzle {
+            Some(s) => match s.as_str() {
+                "1.0" => drizzle::Scale::Scale1_0,
+                "1.5" => drizzle::Scale::Scale1_5,
+                "2.0" => drizzle::Scale::Scale2_0,
+                "3.0" => drizzle::Scale::Scale3_0,
+                _ => {
+                    eprintln!(
+                        "Invalid drizze scale: {}. Valid options: 1.0, 1.5, 2.0, 3.0",
+                        s
+                    );
+                    process::exit(1);
+                }
+            },
+            None => drizzle::Scale::Scale1_0,
+        };
+
         let flat_frame = match &self.flat {
             Some(f) => {
                 if !path::file_exists(f) {
@@ -99,11 +125,11 @@ impl RunnableSubcommand for PreProcess {
                 }
 
                 match path::get_extension(&f).unwrap().to_uppercase().as_str() {
-                    "SER" => processing::HaProcessing::create_mean_from_ser(f).unwrap(),
-                    _ => Image::open_str(&f).unwrap(),
+                    "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
+                    _ => Some(Image::open_str(&f).unwrap()),
                 }
             }
-            None => image::Image::new_empty().unwrap(),
+            None => None,
         };
 
         let dark_frame = match &self.dark {
@@ -113,11 +139,11 @@ impl RunnableSubcommand for PreProcess {
                 }
 
                 match path::get_extension(&f).unwrap().to_uppercase().as_str() {
-                    "SER" => processing::HaProcessing::create_mean_from_ser(f).unwrap(),
-                    _ => Image::open_str(&f).unwrap(),
+                    "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
+                    _ => Some(Image::open_str(&f).unwrap()),
                 }
             }
-            None => image::Image::new_empty().unwrap(),
+            None => None,
         };
 
         let dark_flat_frame = match &self.darkflat {
@@ -127,11 +153,25 @@ impl RunnableSubcommand for PreProcess {
                 }
 
                 match path::get_extension(&f).unwrap().to_uppercase().as_str() {
-                    "SER" => processing::HaProcessing::create_mean_from_ser(f).unwrap(),
-                    _ => Image::open_str(&f).unwrap(),
+                    "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
+                    _ => Some(Image::open_str(&f).unwrap()),
                 }
             }
-            None => image::Image::new_empty().unwrap(),
+            None => None,
+        };
+
+        let bias_frame = match &self.dark {
+            Some(f) => {
+                if !path::file_exists(f) {
+                    error!("Error: Bias file not found: {}", f);
+                }
+
+                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                    "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
+                    _ => Some(Image::open_str(&f).unwrap()),
+                }
+            }
+            None => None,
         };
 
         // let input_files: Vec<&str> = self.input_files.iter().map(|s| s.as_str()).collect();
@@ -160,12 +200,28 @@ impl RunnableSubcommand for PreProcess {
             let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
             ser_file.validate();
 
-            (0..ser_file.frame_count).into_par_iter().for_each(|i| {
+            let num_frames = match self.number_of_frames {
+                Some(n) => n,
+                None => ser_file.frame_count,
+            };
+
+            (0..num_frames).into_par_iter().for_each(|i| {
                 let mut frame = ser_file.get_frame(i).expect("Failed extracting frame");
 
                 frame
                     .buffer
-                    .calibrate(&flat_frame, &dark_frame, &dark_flat_frame);
+                    .calibrate2(&flat_frame, &dark_frame, &dark_flat_frame, &bias_frame);
+
+                let sd = quality::get_quality_estimation(&frame.buffer);
+                if sd.is_nan() {
+                    warn!("Frame quality is NaN!");
+                    process::exit(2);
+                }
+                info!("Quality of frame measured as {}", sd);
+                if sd < min_sigma || sd > max_sigma {
+                    warn!("Frame #{} is outside of sigma range ({})", i, sd);
+                    return;
+                }
 
                 let offset = frame
                     .buffer
@@ -197,7 +253,7 @@ impl RunnableSubcommand for PreProcess {
                 let mut drizzle_buffer = drizzle::BilinearDrizzle::new(
                     ser_file.image_width,
                     ser_file.image_height,
-                    drizzle::Scale::Scale1_0,
+                    drizzle_scale,
                     3,
                 );
 
@@ -216,16 +272,6 @@ impl RunnableSubcommand for PreProcess {
                     let x = (ser_file.image_width - crop_width) / 2;
                     let y = (ser_file.image_width - crop_height) / 2;
                     calibrated_buffer.crop(x, y, crop_width, crop_height);
-                }
-
-                let sd = quality::get_quality_estimation(&calibrated_buffer).unwrap_or(0.0);
-                if sd.is_nan() {
-                    warn!("Frame quality is NaN!");
-                }
-                info!("Quality of frame measured as {}", sd);
-                if sd < min_sigma || sd > max_sigma {
-                    warn!("Frame #{} is outside of sigma range ({})", i, sd);
-                    return;
                 }
 
                 let new_extension = match self.quality {

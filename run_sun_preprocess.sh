@@ -41,7 +41,12 @@ BIT_DEPTH=`solha ser-info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
 INITIAL_ROTATION=`solha frame-stats -i $check_file  -l $LOC_LATITUDE -L $LOC_LONGITUDE 2> /dev/null | head -n 2 | tail -n 1 | tr -s ' '  | cut -d ' ' -f 6`
 
-FRAME_LIMIT=5000
+FRAME_LIMIT=100
+
+CHROME_OUTPUT=$DATAROOT/preprocessed
+PROM_OUTPUT=$DATAROOT/preprocessed-prom
+PHOTO_OUTPUT=$DATAROOT/preprocessed-photo
+
 
 if [ $BIT_DEPTH -eq 8 ]; then
     # 8 Bit
@@ -61,14 +66,14 @@ if [ $BIT_DEPTH -eq 8 ]; then
     PHOTO_TOP_PCT=30
 elif [ $BIT_DEPTH -eq 16 ]; then
     # 16 Bit
-    CHROME_THRESH=14560
-    CHROME_SIGMA_MIN=300
-    CHROME_SIGMA_MAX=1285
+    CHROME_THRESH=20560
+    CHROME_SIGMA_MIN=0
+    CHROME_SIGMA_MAX=1500
     CHROME_TOP_PCT=30
 
-    PROM_THRESH=60000
-    PROM_SIGMA_MIN=349
-    PROM_SIGMA_MAX=1285
+    PROM_THRESH=14000
+    PROM_SIGMA_MIN=0
+    PROM_SIGMA_MAX=1500
     PROM_TOP_PCT=20
 
     PHOTO_THRESH=15000
@@ -115,11 +120,9 @@ echo Initial Rotation: $INITIAL_ROTATION
 echo Drizzle Upscale Amount: $DRIZZLE_SCALE
 
 echo
-echo Output Chromosphere: $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png
-echo Output Prominance: $DATAROOT/Sun_Prom_${DATA_TS}${VERSION}.png
-echo Output Composite: $DATAROOT/Sun_Composite_${DATA_TS}${VERSION}.png
-echo Output Photosphere: $DATAROOT/Sun_Photo_${DATA_TS}${VERSION}.png
-
+echo Output Chromosphere: $CHROME_OUTPUT
+echo Output Prominance: $PROM_OUTPUT
+echo Output Photosphere: $PHOTO_OUTPUT
 echo
 echo Observation Latitude: $LOC_LATITUDE
 echo Observation Longitude: $LOC_LONGITUDE
@@ -202,8 +205,8 @@ if [ $? -ne 0 ]; then
     echo Warning: Failed to generate threshold test image
 fi
  
-if [ ! -d $DATAROOT/preprocessed ]; then
-    mkdir $DATAROOT/preprocessed
+if [ ! -d $CHROME_OUTPUT ]; then
+    mkdir $CHROME_OUTPUT
 fi
 
 echo "Starting Chromosphere Processing..."
@@ -213,20 +216,23 @@ echo solha -v pre-process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -d $DARK_FRAME \
                 -f $FLAT_FRAME \
                 -D $DARKFLAT_FRAME \
-                -o $DATAROOT/preprocessed \
+                -b $BIAS_FRAME \
+                -o $CHROME_OUTPUT \
                 -t $CHROME_THRESH \
                 -l $LOC_LATITUDE \
                 -L $LOC_LONGITUDE \
                 -S $CHROME_SIGMA_MAX \
                 -s $CHROME_SIGMA_MIN \
                 -I 0 \
-                -T sun \
-                -q 
+                -u $DRIZZLE_SCALE \
+                -n $FRAME_LIMIT \
+                -T sun 
 
 solha -v pre-process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -d $DARK_FRAME \
                 -f $FLAT_FRAME \
                 -D $DARKFLAT_FRAME \
+                -b $BIAS_FRAME \
                 -o $DATAROOT/preprocessed \
                 -t $CHROME_THRESH \
                 -l $LOC_LATITUDE \
@@ -235,5 +241,62 @@ solha -v pre-process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -s $CHROME_SIGMA_MIN \
                 -I 0 \
                 -T sun \
-                -q \
-                2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
+                -u $DRIZZLE_SCALE \
+                -n $FRAME_LIMIT \
+                2>&1 | tee $DATAROOT/chromosphere_pp_${DATA_TS}${VERSION}.log
+
+exit
+HAS_PROM=0
+if [ -d $DATAROOT/$PROM_ROOT ]; then
+    HAS_PROM=1
+fi
+
+if [ $HAS_PROM -eq 1 ]; then
+
+    echo "Starting Prominence Processing..."
+    if [ ! -d $PROM_OUTPUT ]; then
+        mkdir $PROM_OUTPUT
+    fi
+
+    PROM_DARK_FRAME=$DATAROOT/Prom_Dark_${DATA_TS}${VERSION}.png
+    echo Creating calibration frames...
+    if [ ! -f $PROM_DARK_FRAME ]; then
+        solha -v mean -i $DATAROOT/$PROM_DARK_ROOT/*/*ser -o $PROM_DARK_FRAME
+        if [ ! -f $PROM_DARK_FRAME -o $? -ne 0 ]; then
+            echo Error: Failed to generate dark frame
+        fi
+    fi
+
+    echo "Running solha command:"
+    echo solha -v pre-process -i $DATAROOT/$PROM_ROOT/*/*ser \
+                -d $PROM_DARK_FRAME \
+                -f $FLAT_FRAME \
+                -D $DARKFLAT_FRAME \
+                -b $BIAS_FRAME \
+                -o $PROM_OUTPUT \
+                -t $PROM_THRESH \
+                -l $LOC_LATITUDE \
+                -L $LOC_LONGITUDE \
+                -S $PROM_SIGMA_MAX \
+                -s $PROM_SIGMA_MIN \
+                -I 0 \
+                -T sun \
+                -u $DRIZZLE_SCALE \
+                -n $FRAME_LIMIT
+
+    solha -v pre-process -i $DATAROOT/$PROM_ROOT/*/*ser \
+                -d $PROM_DARK_FRAME \
+                -f $FLAT_FRAME \
+                -D $DARKFLAT_FRAME \
+                -b $BIAS_FRAME \
+                -o $PROM_OUTPUT \
+                -t $PROM_THRESH \
+                -l $LOC_LATITUDE \
+                -L $LOC_LONGITUDE \
+                -s $PROM_SIGMA_MIN \
+                -I 0 \
+                -T sun \
+                -u $DRIZZLE_SCALE \
+                -n $FRAME_LIMIT \
+                2>&1 | tee $DATAROOT/prominence_pp_${DATA_TS}${VERSION}.log
+fi
