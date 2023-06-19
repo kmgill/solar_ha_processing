@@ -74,15 +74,17 @@ struct ProcessContext {
     pub obs_latitude: f32,
     pub obs_longitude: f32,
     pub target: Target,
-    pub flat_field: image::Image,
-    pub dark_field: image::Image,
-    pub dark_flat_field: image::Image,
+    pub flat_field: Option<image::Image>,
+    pub dark_field: Option<image::Image>,
+    pub dark_flat_field: Option<image::Image>,
+    pub bias_field: Option<image::Image>,
 }
 
 pub struct HaProcessing {
-    pub flat_field: image::Image,
-    pub dark_field: image::Image,
-    pub dark_flat_field: image::Image,
+    pub flat_field: Option<image::Image>,
+    pub dark_field: Option<image::Image>,
+    pub dark_flat_field: Option<image::Image>,
+    pub bias_field: Option<image::Image>,
     pub mask: image::Image,
     pub width: usize,
     pub height: usize,
@@ -139,6 +141,7 @@ impl HaProcessing {
         flat_path: &str,
         dark_path: &str,
         dark_flat_path: &str,
+        bias_path: &str,
         mask_file: &str,
         crop_width: usize,
         crop_height: usize,
@@ -156,46 +159,61 @@ impl HaProcessing {
         drizzle_scale: drizzle::Scale,
     ) -> Result<HaProcessing> {
         let flat = match flat_path.len() {
-            0 => image::Image::new_empty().unwrap(),
+            0 => None,
             _ => {
                 if !path::file_exists(flat_path) {
                     panic!("File not found: {}", flat_path);
                 }
 
                 if HaProcessing::is_ser_file(flat_path) {
-                    HaProcessing::create_mean_from_ser(flat_path).unwrap()
+                    Some(HaProcessing::create_mean_from_ser(flat_path).unwrap())
                 } else {
-                    image::Image::open_str(flat_path).unwrap()
+                    Some(image::Image::open_str(flat_path).unwrap())
                 }
             }
         };
 
         let dark = match dark_path.len() {
-            0 => image::Image::new_empty().unwrap(),
+            0 => None,
             _ => {
                 if !path::file_exists(dark_path) {
                     panic!("File not found: {}", dark_path);
                 }
 
                 if HaProcessing::is_ser_file(dark_path) {
-                    HaProcessing::create_mean_from_ser(dark_path).unwrap()
+                    Some(HaProcessing::create_mean_from_ser(dark_path).unwrap())
                 } else {
-                    image::Image::open_str(dark_path).unwrap()
+                    Some(image::Image::open_str(dark_path).unwrap())
                 }
             }
         };
 
         let darkflat = match dark_flat_path.len() {
-            0 => image::Image::new_empty().unwrap(),
+            0 => None,
             _ => {
                 if !path::file_exists(dark_flat_path) {
                     panic!("File not found: {}", dark_flat_path);
                 }
 
                 if HaProcessing::is_ser_file(dark_flat_path) {
-                    HaProcessing::create_mean_from_ser(dark_flat_path).unwrap()
+                    Some(HaProcessing::create_mean_from_ser(dark_flat_path).unwrap())
                 } else {
-                    image::Image::open_str(dark_flat_path).unwrap()
+                    Some(image::Image::open_str(dark_flat_path).unwrap())
+                }
+            }
+        };
+
+        let bias = match bias_path.len() {
+            0 => None,
+            _ => {
+                if !path::file_exists(dark_flat_path) {
+                    panic!("File not found: {}", dark_flat_path);
+                }
+
+                if HaProcessing::is_ser_file(dark_flat_path) {
+                    Some(HaProcessing::create_mean_from_ser(dark_flat_path).unwrap())
+                } else {
+                    Some(image::Image::open_str(dark_flat_path).unwrap())
                 }
             }
         };
@@ -219,6 +237,7 @@ impl HaProcessing {
             flat_field: flat,
             dark_field: dark,
             dark_flat_field: darkflat,
+            bias_field: bias,
             mask,
             width: ser1.image_width,
             height: ser1.image_height,
@@ -265,7 +284,12 @@ impl HaProcessing {
     }
 
     pub fn process_frame(&self, buffer: &mut image::Image) {
-        buffer.calibrate(&self.flat_field, &self.dark_field, &self.dark_flat_field);
+        buffer.calibrate2(
+            &self.flat_field,
+            &self.dark_field,
+            &self.dark_flat_field,
+            &self.bias_field,
+        );
     }
 
     pub fn finalize(&mut self, out_path: &str) -> Result<()> {
@@ -369,6 +393,7 @@ impl HaProcessing {
                 flat_field: self.flat_field.clone(),
                 dark_field: self.dark_field.clone(),
                 dark_flat_field: self.dark_flat_field.clone(),
+                bias_field: self.bias_field.clone(),
             })
             .collect::<Vec<ProcessContext>>();
 
@@ -390,10 +415,11 @@ impl HaProcessing {
                             let mut frame_buffer =
                                 ser_file.get_frame(frame_record.frame_id).unwrap();
 
-                            frame_buffer.buffer.calibrate(
+                            frame_buffer.buffer.calibrate2(
                                 &context.flat_field,
                                 &context.dark_field,
                                 &context.dark_flat_field,
+                                &context.bias_field,
                             );
 
                             let offset = frame_buffer

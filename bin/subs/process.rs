@@ -19,8 +19,11 @@ pub struct Process {
     #[clap(long, short, help = "Dark frame file")]
     dark: Option<String>,
 
-    #[clap(long, short = 'D', help = "dark Flat frame file")]
+    #[clap(long, short = 'D', help = "Dark Flat frame file")]
     darkflat: Option<String>,
+
+    #[clap(long, short, help = "Bias frame file")]
+    bias: Option<String>,
 
     #[clap(long, short, help = "Crop width")]
     width: Option<usize>,
@@ -151,6 +154,16 @@ impl RunnableSubcommand for Process {
             None => String::from(""),
         };
 
+        let bias_frame = match &self.bias {
+            Some(f) => {
+                if !path::file_exists(f) {
+                    eprintln!("Error: Bias file not found: {}", f);
+                }
+                f.clone()
+            }
+            None => String::from(""),
+        };
+
         let mask_file = match &self.mask {
             Some(f) => {
                 if !path::file_exists(f) {
@@ -223,6 +236,7 @@ impl RunnableSubcommand for Process {
             &flat_frame,
             &dark_frame,
             &dark_flat_frame,
+            &bias_frame,
             &mask_file,
             crop_width,
             crop_height,
