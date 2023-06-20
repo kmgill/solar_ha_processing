@@ -12,6 +12,13 @@ use std::cmp::Ordering;
 
 const UNKNOWN_ROTATION: f64 = -99999.0;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProcessStep {
+    QualityEstimation,
+    Calibration,
+    Finalize,
+}
+
 #[derive(Debug, Clone)]
 pub struct FrameRecord {
     pub source_file: String,
@@ -114,6 +121,7 @@ pub struct HaProcessing {
     pub number_of_frames: usize,
     pub file_map: fpmap::FpMap,
     pub drizzle_scale: drizzle::Scale,
+    pub quality_values: Vec<f32>,
 }
 
 impl HaProcessing {
@@ -258,6 +266,7 @@ impl HaProcessing {
             target,
             file_map: fpmap::FpMap::new(),
             drizzle_scale,
+            quality_values: vec![],
         })
     }
 
@@ -500,6 +509,7 @@ impl HaProcessing {
                     use_frame: qual >= self.min_sigma && qual <= self.max_sigma,
                 }
             })
+            .filter(|fr| fr.use_frame)
             .collect::<Vec<FrameRecord>>()
     }
 
@@ -533,12 +543,14 @@ impl HaProcessing {
         }
     }
 
-    pub fn process_ser_files(
+    pub fn process_ser_files<F: Fn(ProcessStep, usize), C: Fn(ProcessStep)>(
         &mut self,
         ser_files: &[&str],
         limit_top_pct: u8,
         enable_rotation: bool,
         initial_rotation: Option<f64>,
+        _on_frame_checked: F,
+        _on_step_completed: C,
     ) {
         if limit_top_pct > 100 {
             panic!("Invalid percentage: Exceeds 100%: {}", limit_top_pct);
@@ -549,6 +561,8 @@ impl HaProcessing {
         self.init_ser_file_map(ser_files);
 
         let frame_records: Vec<FrameRecord> = self.determine_quality_across_sers();
+
+        self.quality_values = frame_records.iter().map(|fr| fr.quality_value).collect();
 
         let max_frame =
             ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;

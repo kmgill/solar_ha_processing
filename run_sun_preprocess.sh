@@ -34,14 +34,14 @@ PHOTO_MAX_SCALE=90
 CROP_WIDTH=1200
 CROP_HEIGHT=1200
 
-DRIZZLE_SCALE=1.5
+DRIZZLE_SCALE=1.0
 
 check_file=`ls -1 $DATAROOT/$CHROME_ROOT/*/*ser | head -n 1`
 BIT_DEPTH=`solha ser-info -i $check_file | grep "Pixel Depth" | cut -d ' ' -f 3`
 
 INITIAL_ROTATION=`solha frame-stats -i $check_file  -l $LOC_LATITUDE -L $LOC_LONGITUDE 2> /dev/null | head -n 2 | tail -n 1 | tr -s ' '  | cut -d ' ' -f 6`
 
-FRAME_LIMIT=100
+FRAME_LIMIT=1000
 
 CHROME_OUTPUT=$DATAROOT/preprocessed
 PROM_OUTPUT=$DATAROOT/preprocessed-prom
@@ -226,6 +226,7 @@ echo solha -v pre-process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -I 0 \
                 -u $DRIZZLE_SCALE \
                 -n $FRAME_LIMIT \
+                -q \
                 -T sun 
 
 solha -v pre-process -i $DATAROOT/$CHROME_ROOT/*/*ser \
@@ -243,7 +244,7 @@ solha -v pre-process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -T sun \
                 -u $DRIZZLE_SCALE \
                 -n $FRAME_LIMIT \
-                2>&1 | tee $DATAROOT/chromosphere_pp_${DATA_TS}${VERSION}.log
+                -q 
 
 
 HAS_PROM=0
@@ -298,5 +299,5 @@ if [ $HAS_PROM -eq 1 ]; then
                 -T sun \
                 -u $DRIZZLE_SCALE \
                 -n $FRAME_LIMIT \
-                2>&1 | tee $DATAROOT/prominence_pp_${DATA_TS}${VERSION}.log
+                -q
 fi

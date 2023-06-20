@@ -222,7 +222,7 @@ solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
                 -T sun \
                 -u $DRIZZLE_SCALE \
                 -P $CHROME_MAX_SCALE 2>&1 | tee $DATAROOT/chromosphere_${DATA_TS}${VERSION}.log
-                -m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
+               ## -m $MASKROOT/Sun_Chromosphere_1200x1200_v2.png
  
 # echo "Creating Limb Darkening Corrected Image..."
 # solha -v ld-correct -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
@@ -235,7 +235,6 @@ solha -v process -i $DATAROOT/$CHROME_ROOT/*/*ser \
 # echo "Creating Invert Composited Image..."
 # solha -v composite -i $DATAROOT/Sun_Chrome_${DATA_TS}${VERSION}.png \
 #                     -r 770 \
-#                     -o $DATAROOT/Sun_Chrome_${DATA_TS}_composite${VERSION}.png  2>&1 | tee $DATAROOT/chrome_composite_${DATA_TS}${VERSION}.log
 
 
 if [ $HAS_PROM -eq 1 ]; then

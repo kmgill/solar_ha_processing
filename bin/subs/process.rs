@@ -259,6 +259,8 @@ impl RunnableSubcommand for Process {
             limit_top_pct,
             enable_rotation,
             initial_rotation,
+            |_ps, _frame_no| {},
+            |_ps| {},
         );
         ha_processing
             .finalize(&self.output)

@@ -8,6 +8,8 @@ use solhat::{drizzle, processing, ser};
 use std::fs;
 use std::process;
 
+pb_create!();
+
 const UNKNOWN_ROTATION: f64 = -99999.0;
 
 #[derive(clap::Args)]
@@ -80,6 +82,7 @@ pub struct PreProcess {
 
 impl RunnableSubcommand for PreProcess {
     fn run(&self) {
+        pb_set_print!();
         let min_sigma = self.minsigma.unwrap_or(0.0);
         let max_sigma = self.maxsigma.unwrap_or(100000.0);
         let target = match &self.target {
@@ -108,7 +111,7 @@ impl RunnableSubcommand for PreProcess {
                 "2.0" => drizzle::Scale::Scale2_0,
                 "3.0" => drizzle::Scale::Scale3_0,
                 _ => {
-                    eprintln!(
+                    error!(
                         "Invalid drizze scale: {}. Valid options: 1.0, 1.5, 2.0, 3.0",
                         s
                     );
@@ -200,11 +203,18 @@ impl RunnableSubcommand for PreProcess {
             let ser_file = ser::SerFile::load_ser(ser_file_path).expect("Unable to load SER file");
             ser_file.validate();
 
-            let num_frames = match self.number_of_frames {
-                Some(n) => n,
-                None => ser_file.frame_count,
+            let num_frames = if let Some(nf) = self.number_of_frames {
+                if nf <= ser_file.frame_count {
+                    nf
+                } else {
+                    ser_file.frame_count
+                }
+            } else {
+                ser_file.frame_count
             };
 
+            pb_set_length!(num_frames);
+            pb_zero!();
             (0..num_frames).into_par_iter().for_each(|i| {
                 let mut frame = ser_file.get_frame(i).expect("Failed extracting frame");
 
@@ -297,7 +307,10 @@ impl RunnableSubcommand for PreProcess {
                 calibrated_buffer
                     .save(&frame_output_path)
                     .expect("Failed to save image");
+
+                pb_inc!();
             });
         });
+        pb_done!();
     }
 }
