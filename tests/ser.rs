@@ -3,7 +3,7 @@ use solhat::{ser, timestamp};
 
 #[test]
 fn test_load_ser() {
-    let test_ser_file = "testdata/Sun_150729.ser";
+    let test_ser_file = "testdata/Sun_130540_F0001-0005.ser";
 
     // Validate file exists
     assert_eq!(path::file_exists(test_ser_file), true);
@@ -21,42 +21,42 @@ fn test_load_ser() {
     assert_eq!(ser_file.color_id, ser::ColorFormatId::Mono);
     assert_eq!(ser_file.image_width, 1936);
     assert_eq!(ser_file.image_height, 1216);
-    assert_eq!(ser_file.pixel_depth, 8);
-    assert_eq!(ser_file.frame_count, 114);
+    assert_eq!(ser_file.pixel_depth, 16);
+    assert_eq!(ser_file.frame_count, 5);
     assert_eq!(
         ser_file.observer,
-        "                                        "
+        "Kevin M. Gill\0\0\0\0\0\0\0@\u{7}\0\0\0\0\0\0\0\0\0\0\0\0\0\0\u{5}\0\0\0"
     );
     assert_eq!(
         ser_file.instrument,
-        "ASI=ZWO ASI174MMtemp=46.5               "
+        "ASI=ZWO ASI174MMtemp=45.8\0P\0l\0a\0y\0e\0r\0\\\0"
     );
     assert_eq!(
         ser_file.telescope,
-        "fps=92.17gain=160exp=1.50               "
+        "fps=55.25gain=160exp=2.50\0:\00\00\00\00\00\02\0"
     );
     assert_eq!(
         ser_file.date_time,
-        timestamp::TimeStamp::from_u64(637648348476600000)
+        timestamp::TimeStamp::from_u64(638225427037360000)
     );
     assert_eq!(
         ser_file.date_time_utc,
-        timestamp::TimeStamp::from_u64(637648348476340000)
+        timestamp::TimeStamp::from_u64(638225427036930000)
     );
-    assert_eq!(ser_file.total_size, 268377154);
+    assert_eq!(ser_file.total_size, 23541938);
 
     // Validate timestamps are present in file
-    assert_eq!(ser_file.has_timestamps(), true);
+    assert_eq!(ser_file.has_timestamps(), false);
 
     // Validate image size in bytes, but calculated and expected
     let image_frame_size_bytes =
         ser_file.image_width * ser_file.image_height * (ser_file.pixel_depth / 8);
-    assert_eq!(image_frame_size_bytes, 2354176);
-    assert_eq!(ser_file.image_frame_size_bytes(), 2354176);
+    assert_eq!(image_frame_size_bytes, 4708352);
+    assert_eq!(ser_file.image_frame_size_bytes(), 4708352);
 
     // Validate bytes per pixel
     let bytes_per_pixel = ser_file.pixel_depth / 8;
-    assert_eq!(bytes_per_pixel, 1);
+    assert_eq!(bytes_per_pixel, 2);
 
     // Validate image size in bytes via bytes per pixel, width, and height
     let expected_image_size = bytes_per_pixel * ser_file.image_width * ser_file.image_height;
@@ -99,7 +99,7 @@ fn test_load_ser() {
 
 #[test]
 fn test_fetch_frame() {
-    let test_ser_file = "testdata/Sun_150729.ser";
+    let test_ser_file = "testdata/Sun_130540_F0001-0005.ser";
 
     // Validate file exists
     assert_eq!(path::file_exists(test_ser_file), true);
@@ -122,10 +122,7 @@ fn test_fetch_frame() {
     assert_eq!(frame_0.buffer.height, ser_file.image_height);
 
     println!("Timestamp: {:?}", frame_0.timestamp);
-    assert_eq!(
-        frame_0.timestamp,
-        timestamp::TimeStamp::from_u64(637648348476340000)
-    ); // Need to validate this value
+    assert_eq!(frame_0.timestamp, timestamp::TimeStamp::from_u64(0)); // Need to validate this value
 
     // Validate frame saves to disk. Check output manually
     //frame_0.buffer.save_8bit("testdata/test_frame_0.png").expect("Failed to save test frame to testdata directory");

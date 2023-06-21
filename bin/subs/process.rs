@@ -31,15 +31,6 @@ pub struct Process {
     #[clap(long, short = 'H', help = "Crop height")]
     height: Option<usize>,
 
-    #[clap(long, short, help = "Red weight")]
-    redweight: Option<f32>,
-
-    #[clap(long, short, help = "Green weight")]
-    greenweight: Option<f32>,
-
-    #[clap(long, short, help = "Blue weight")]
-    blueweight: Option<f32>,
-
     #[clap(long, short, help = "Observer latitude", allow_hyphen_values(true))]
     latitude: f32,
 
@@ -174,9 +165,9 @@ impl RunnableSubcommand for Process {
             None => String::from(""),
         };
 
-        let red_scalar = self.redweight.unwrap_or(1.0);
-        let green_scalar = self.greenweight.unwrap_or(1.0);
-        let blue_scalar = self.blueweight.unwrap_or(1.0);
+        let red_scalar = 1.0;
+        let green_scalar = 1.0;
+        let blue_scalar = 1.0;
         let max_sigma = self.maxsigma.unwrap_or(1000000.0);
         let min_sigma = self.minsigma.unwrap_or(0.0);
 
