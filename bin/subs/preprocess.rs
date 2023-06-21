@@ -127,9 +127,9 @@ impl RunnableSubcommand for PreProcess {
                     error!("Error: Flat file not found: {}", f);
                 }
 
-                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                match path::get_extension(f).unwrap().to_uppercase().as_str() {
                     "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
-                    _ => Some(Image::open_str(&f).unwrap()),
+                    _ => Some(Image::open_str(f).unwrap()),
                 }
             }
             None => None,
@@ -141,9 +141,9 @@ impl RunnableSubcommand for PreProcess {
                     error!("Error: Dark file not found: {}", f);
                 }
 
-                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                match path::get_extension(f).unwrap().to_uppercase().as_str() {
                     "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
-                    _ => Some(Image::open_str(&f).unwrap()),
+                    _ => Some(Image::open_str(f).unwrap()),
                 }
             }
             None => None,
@@ -155,9 +155,9 @@ impl RunnableSubcommand for PreProcess {
                     error!("Error: Dark Flat file not found: {}", f);
                 }
 
-                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                match path::get_extension(f).unwrap().to_uppercase().as_str() {
                     "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
-                    _ => Some(Image::open_str(&f).unwrap()),
+                    _ => Some(Image::open_str(f).unwrap()),
                 }
             }
             None => None,
@@ -169,9 +169,9 @@ impl RunnableSubcommand for PreProcess {
                     error!("Error: Bias file not found: {}", f);
                 }
 
-                match path::get_extension(&f).unwrap().to_uppercase().as_str() {
+                match path::get_extension(f).unwrap().to_uppercase().as_str() {
                     "SER" => Some(processing::HaProcessing::create_mean_from_ser(f).unwrap()),
-                    _ => Some(Image::open_str(&f).unwrap()),
+                    _ => Some(Image::open_str(f).unwrap()),
                 }
             }
             None => None,

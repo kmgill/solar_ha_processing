@@ -212,9 +212,8 @@ impl SerFile {
         }
 
         let timestamp_start_index = self.timestamp_start_index(frame_num);
-        Ok(self
-            .file_reader
-            .read_u64_with_endiness(timestamp_start_index, Endian::NativeEndian)?)
+        self.file_reader
+            .read_u64_with_endiness(timestamp_start_index, Endian::NativeEndian)
     }
 
     pub fn get_frame(&self, frame_num: usize) -> Result<SerFrame> {
