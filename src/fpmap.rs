@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 /** file pointer map */
 pub struct FpMap {
-    map: HashMap<String, ser::SerFile>,
+    pub map: HashMap<String, ser::SerFile>,
 }
 
 impl Default for FpMap {

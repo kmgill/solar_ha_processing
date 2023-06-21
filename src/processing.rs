@@ -7,8 +7,9 @@ use crate::{
 use anyhow::{anyhow, Result};
 use rayon::prelude::*;
 use sciimg::imagebuffer::Offset;
-use sciimg::{image, imagerot, path, quality};
+use sciimg::{image, imagerot, max, min, path, quality};
 use std::cmp::Ordering;
+use std::fmt;
 
 const UNKNOWN_ROTATION: f64 = -99999.0;
 
@@ -19,12 +20,69 @@ pub enum ProcessStep {
     Finalize,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct ProcessReport {
+    pub total_frames: usize,
+    pub num_frames_used: usize,
+    pub min_sigma: f32,
+    pub max_sigma: f32,
+    pub num_frames_discarded: usize,
+    pub num_frames_discarded_min_sigma: usize,
+    pub num_frames_discarded_max_sigma: usize,
+    pub num_frames_discarded_top_percentage: usize,
+    pub initial_rotation: f32,
+    pub quality_values: Vec<f32>,
+}
+
+impl ProcessReport {
+    fn check_sigma(&mut self, s: f32) {
+        self.min_sigma = min!(self.min_sigma, s);
+        self.max_sigma = max!(self.max_sigma, s);
+    }
+    pub fn push_sigma(&mut self, s: f32) {
+        self.quality_values.push(s);
+        self.check_sigma(s);
+    }
+    pub fn check_total_discarded(&mut self) {
+        self.num_frames_discarded = self.num_frames_discarded_max_sigma
+            + self.num_frames_discarded_min_sigma
+            + self.num_frames_discarded_top_percentage;
+    }
+}
+
+impl fmt::Display for ProcessReport {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut text = format!("Total Frames: {}\n", self.total_frames);
+        text += format!("Num Frames Used: {}\n", self.num_frames_used).as_ref();
+        text += format!("Num Frames Discarded: {}\n", self.num_frames_discarded).as_ref();
+        text += format!(
+            "\tDue to low sigma: {}\n",
+            self.num_frames_discarded_min_sigma
+        )
+        .as_ref();
+        text += format!(
+            "\tDue to high sigma: {}\n",
+            self.num_frames_discarded_max_sigma
+        )
+        .as_ref();
+
+        text += format!(
+            "\tDue to top pct limitation: {}\n",
+            self.num_frames_discarded_top_percentage
+        )
+        .as_ref();
+        text += format!("Maximum Sigma Encountered: {}\n", self.max_sigma).as_ref();
+        text += format!("Minimum Sigma Encountered: {}\n", self.min_sigma).as_ref();
+        text += format!("Initial Parallatic Rotation: {}\n", self.initial_rotation).as_ref();
+        write!(f, "{}", text)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FrameRecord {
     pub source_file: String,
     pub frame_id: usize,
     pub quality_value: f32,
-    pub use_frame: bool,
 }
 
 impl Ord for FrameRecord {
@@ -121,7 +179,7 @@ pub struct HaProcessing {
     pub number_of_frames: usize,
     pub file_map: fpmap::FpMap,
     pub drizzle_scale: drizzle::Scale,
-    pub quality_values: Vec<f32>,
+    pub process_report: ProcessReport,
 }
 
 impl HaProcessing {
@@ -266,7 +324,7 @@ impl HaProcessing {
             target,
             file_map: fpmap::FpMap::new(),
             drizzle_scale,
-            quality_values: vec![],
+            process_report: ProcessReport::default(),
         })
     }
 
@@ -387,6 +445,7 @@ impl HaProcessing {
                 self.obs_longitude,
             ),
         };
+        self.process_report.initial_rotation = initial_rotation as f32;
 
         let num_per_chunk = frame_records.len() / num_cpus::get();
 
@@ -412,10 +471,6 @@ impl HaProcessing {
                 let mut file_map = fpmap::FpMap::new();
 
                 for frame_record in context.frame_records {
-                    if !frame_record.use_frame {
-                        continue;
-                    }
-
                     match file_map.get(&frame_record.source_file) {
                         None => panic!(
                             "SER file does not exist in file map. Not good, Kevin. Not good."
@@ -502,14 +557,13 @@ impl HaProcessing {
                     "Quality value of frame {} is {}",
                     ser_file.source_file, qual
                 );
+
                 FrameRecord {
                     source_file: ser_file.source_file.to_string(),
                     frame_id: i,
                     quality_value: qual,
-                    use_frame: qual >= self.min_sigma && qual <= self.max_sigma,
                 }
             })
-            .filter(|fr| fr.use_frame)
             .collect::<Vec<FrameRecord>>()
     }
 
@@ -534,13 +588,13 @@ impl HaProcessing {
     }
 
     pub fn init_ser_file_map(&mut self, ser_files: &[&str]) {
-        for sf in ser_files.iter() {
+        ser_files.iter().for_each(|sf| {
             if !path::file_exists(sf) {
                 panic!("File not found: {}", sf);
             }
 
             self.file_map.open(&sf.to_string()).unwrap();
-        }
+        });
     }
 
     pub fn process_ser_files<F: Fn(ProcessStep, usize), C: Fn(ProcessStep)>(
@@ -560,14 +614,45 @@ impl HaProcessing {
         // beforehard.
         self.init_ser_file_map(ser_files);
 
-        let frame_records: Vec<FrameRecord> = self.determine_quality_across_sers();
+        self.file_map.map.iter().for_each(|(_, m)| {
+            self.process_report.total_frames += m.frame_count;
+        });
+        info!(
+            "Total frames considered: {}",
+            self.process_report.total_frames
+        );
 
-        self.quality_values = frame_records.iter().map(|fr| fr.quality_value).collect();
+        self.process_report.min_sigma = std::f32::MAX;
+        self.process_report.max_sigma = std::f32::MIN;
+        let frame_records: Vec<FrameRecord> = self
+            .determine_quality_across_sers()
+            .iter()
+            .map(|fr| fr.to_owned())
+            .filter(|fr| {
+                self.process_report.push_sigma(fr.quality_value);
+                if fr.quality_value < self.min_sigma {
+                    self.process_report.num_frames_discarded_min_sigma += 1
+                } else if fr.quality_value > self.max_sigma {
+                    self.process_report.num_frames_discarded_max_sigma += 1
+                }
+                fr.quality_value >= self.min_sigma && fr.quality_value <= self.max_sigma
+            })
+            .collect();
 
         let max_frame =
             ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
 
         let limited_frame_records: Vec<FrameRecord> = frame_records[0..max_frame].to_vec();
+
+        self.process_report.num_frames_discarded_top_percentage =
+            frame_records.len() - limited_frame_records.len();
+        info!(
+            "Number of frames discarded while limiting to top {}%: {}",
+            limit_top_pct, self.process_report.num_frames_discarded_top_percentage
+        );
+        self.process_report.num_frames_used = limited_frame_records.len();
+
+        self.process_report.check_total_discarded();
 
         self.process_frame_records(&limited_frame_records, enable_rotation, initial_rotation);
 

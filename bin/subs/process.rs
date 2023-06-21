@@ -256,5 +256,7 @@ impl RunnableSubcommand for Process {
         ha_processing
             .finalize(&self.output)
             .expect("Failed to finalize buffer");
+
+        println!("Process Report: \n{}", ha_processing.process_report);
     }
 }

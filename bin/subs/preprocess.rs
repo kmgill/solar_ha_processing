@@ -7,6 +7,7 @@ use solhat::processing::HaProcessing;
 use solhat::{drizzle, processing, ser};
 use std::fs;
 use std::process;
+use std::sync::{Arc, Mutex};
 
 pb_create!();
 
@@ -177,7 +178,11 @@ impl RunnableSubcommand for PreProcess {
             None => None,
         };
 
-        // let input_files: Vec<&str> = self.input_files.iter().map(|s| s.as_str()).collect();
+        let mut process_report = processing::ProcessReport::default();
+        process_report.max_sigma = std::f32::MIN;
+        process_report.min_sigma = std::f32::MAX;
+        process_report.initial_rotation = initial_rotation as f32;
+        let report_mtx = Arc::new(Mutex::new(process_report));
 
         self.input_files.iter().for_each(|ser_file_path| {
             if !path::file_exists(ser_file_path) {
@@ -216,6 +221,9 @@ impl RunnableSubcommand for PreProcess {
             pb_set_length!(num_frames);
             pb_zero!();
             (0..num_frames).into_par_iter().for_each(|i| {
+                // Report Update
+                report_mtx.lock().unwrap().total_frames += 1;
+
                 let mut frame = ser_file.get_frame(i).expect("Failed extracting frame");
 
                 frame
@@ -228,8 +236,19 @@ impl RunnableSubcommand for PreProcess {
                     process::exit(2);
                 }
                 info!("Quality of frame measured as {}", sd);
-                if sd < min_sigma || sd > max_sigma {
-                    warn!("Frame #{} is outside of sigma range ({})", i, sd);
+
+                // Report Update
+                report_mtx.lock().unwrap().push_sigma(sd);
+
+                if sd < min_sigma {
+                    warn!("Frame #{} is below of sigma range ({})", i, sd);
+                    // Report Update
+                    report_mtx.lock().unwrap().num_frames_discarded_min_sigma += 1;
+                    return;
+                } else if sd > max_sigma {
+                    warn!("Frame #{} is above sigma range ({})", i, sd);
+                    // Report Update
+                    report_mtx.lock().unwrap().num_frames_discarded_max_sigma += 1;
                     return;
                 }
 
@@ -258,6 +277,11 @@ impl RunnableSubcommand for PreProcess {
                     "Initial rotation was {}, effective rotation is {}",
                     start_rot, do_rotation
                 );
+                // Report Update
+                // You know, 'cause floats.
+                if report_mtx.lock().unwrap().initial_rotation < 0.0001 {
+                    report_mtx.lock().unwrap().initial_rotation = do_rotation as f32;
+                }
                 do_rotation = do_rotation.to_radians();
 
                 let mut drizzle_buffer = drizzle::BilinearDrizzle::new(
@@ -277,6 +301,9 @@ impl RunnableSubcommand for PreProcess {
                 let mut calibrated_buffer = drizzle_buffer
                     .get_finalized()
                     .expect("Failed to finalize drizzle buffer"); // Even though we're not actually drizzling anything
+
+                // Report Update
+                report_mtx.lock().unwrap().num_frames_used += 1;
 
                 if crop_height > 0 && crop_width > 0 {
                     let x = (ser_file.image_width - crop_width) / 2;
@@ -311,6 +338,10 @@ impl RunnableSubcommand for PreProcess {
                 pb_inc!();
             });
         });
+
+        report_mtx.lock().unwrap().check_total_discarded();
+
+        println!("Process Report: \n{}", report_mtx.lock().unwrap());
         pb_done!();
     }
 }
