@@ -178,11 +178,12 @@ impl RunnableSubcommand for PreProcess {
             None => None,
         };
 
-        let mut process_report = processing::ProcessReport::default();
-        process_report.max_sigma = std::f32::MIN;
-        process_report.min_sigma = std::f32::MAX;
-        process_report.initial_rotation = initial_rotation as f32;
-        let report_mtx = Arc::new(Mutex::new(process_report));
+        let report_mtx = Arc::new(Mutex::new(solhat::processing::ProcessReport {
+            max_sigma: std::f32::MIN,
+            min_sigma: std::f32::MAX,
+            initial_rotation: initial_rotation as f32,
+            ..Default::default()
+        }));
 
         self.input_files.iter().for_each(|ser_file_path| {
             if !path::file_exists(ser_file_path) {

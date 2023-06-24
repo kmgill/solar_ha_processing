@@ -334,7 +334,7 @@ impl HaProcessing {
         S: AsRef<Path> + ?Sized + AsRef<OsStr>,
     {
         let rpt_str = serde_json::to_string_pretty(&self.process_report)?;
-        let mut f = fs::File::create(&path)?;
+        let mut f = fs::File::create(path)?;
         write!(f, "{}", rpt_str)?;
         Ok(())
     }
