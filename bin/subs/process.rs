@@ -83,6 +83,9 @@ pub struct Process {
 
     #[clap(long, short = 'u', help = "Drizze upscale (1.5, 2.0, 3.0")]
     drizzle: Option<String>,
+
+    #[clap(long, short = 'r', help = "Process report path")]
+    report: Option<String>,
 }
 
 impl RunnableSubcommand for Process {
@@ -257,6 +260,11 @@ impl RunnableSubcommand for Process {
             .finalize(&self.output)
             .expect("Failed to finalize buffer");
 
+        if let Some(proc_rpt_path) = &self.report {
+            if let Err(why) = ha_processing.write_process_report(proc_rpt_path) {
+                error!("Failed to write process report: {:?}", why);
+            }
+        }
         println!("Process Report: \n{}", ha_processing.process_report);
     }
 }

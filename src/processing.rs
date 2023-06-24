@@ -8,8 +8,9 @@ use anyhow::{anyhow, Result};
 use rayon::prelude::*;
 use sciimg::imagebuffer::Offset;
 use sciimg::{image, imagerot, max, min, path, quality};
-use std::cmp::Ordering;
-use std::fmt;
+use serde::Serialize;
+use std::{cmp::Ordering, ffi::OsStr, fs, path::Path};
+use std::{fmt, io::Write};
 
 const UNKNOWN_ROTATION: f64 = -99999.0;
 
@@ -20,7 +21,7 @@ pub enum ProcessStep {
     Finalize,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct ProcessReport {
     pub total_frames: usize,
     pub num_frames_used: usize,
@@ -328,6 +329,16 @@ impl HaProcessing {
         })
     }
 
+    pub fn write_process_report<S>(&self, path: &S) -> Result<()>
+    where
+        S: AsRef<Path> + ?Sized + AsRef<OsStr>,
+    {
+        let rpt_str = serde_json::to_string_pretty(&self.process_report)?;
+        let mut f = fs::File::create(&path)?;
+        write!(f, "{}", rpt_str)?;
+        Ok(())
+    }
+
     pub fn get_rotation_for_time(
         ts: &timestamp::TimeStamp,
         target: Target,
@@ -568,7 +579,7 @@ impl HaProcessing {
     }
 
     fn determine_quality_across_sers(&self) -> Vec<FrameRecord> {
-        let mut frame_records: Vec<FrameRecord> = self
+        let frame_records: Vec<FrameRecord> = self
             .file_map
             .get_map()
             .par_iter()
@@ -581,9 +592,6 @@ impl HaProcessing {
             .flatten()
             .map(|fr| fr.to_owned())
             .collect::<Vec<FrameRecord>>();
-
-        frame_records.sort(); // Sorts in ascending order
-        frame_records.reverse();
         frame_records
     }
 
@@ -624,7 +632,7 @@ impl HaProcessing {
 
         self.process_report.min_sigma = std::f32::MAX;
         self.process_report.max_sigma = std::f32::MIN;
-        let frame_records: Vec<FrameRecord> = self
+        let mut frame_records: Vec<FrameRecord> = self
             .determine_quality_across_sers()
             .iter()
             .map(|fr| fr.to_owned())
@@ -639,6 +647,9 @@ impl HaProcessing {
             })
             .collect();
 
+        // Sort and limit frame records, keeping the best
+        frame_records.sort(); // Sorts in ascending order
+        frame_records.reverse();
         let max_frame =
             ((limit_top_pct as f32 / 100.0) * frame_records.len() as f32).round() as usize;
 
