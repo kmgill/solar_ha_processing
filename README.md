@@ -1,3 +1,7 @@
+**IMPORTANT:** This repo has been replaced and will not be updated. For the newest revisions, see https://github.com/kmgill/solhat
+
+
+
 # SolHAT: Solar Hydrogen Alpha Telescope Imaging Pipeline
 
 ## Overview
